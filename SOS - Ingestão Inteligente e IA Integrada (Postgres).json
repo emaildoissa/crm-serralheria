@@ -1,0 +1,220 @@
+{
+  "name": "SOS - Ingestão Inteligente e IA Integrada (CRM Webhook)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-webhook",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [3000, 400],
+      "id": "9c87a8f8-7f9a-4dab-a348-35ef181aa223",
+      "name": "Webhook",
+      "webhookId": "2dae7760-881d-4b03-b2b3-ba2e59d248ce"
+    },
+    {
+      "parameters": {
+        "jsCode": "const b = $input.item.json.body || {};\nconst d = b.data || b;\n\nconst wa = (d.key?.remoteJid || b.sender?.jid || '5511999999999').split('@')[0].trim();\nconst name = (d.pushName || b.sender?.name || 'Cliente').trim();\nconst msg = (d.message?.conversation || b.message?.conversation || d.message?.extendedTextMessage?.text || b.message?.extendedTextMessage?.text || '').trim();\n\nif (!msg) {\n  throw new Error('Mensagem vazia ou formato não suportado');\n}\n\nreturn { json: { whatsapp: wa, nome_cliente: name, conversa: msg } };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3200, 400],
+      "id": "43825266-4194-486f-9c23-7cb245a4d70c",
+      "name": "Limpar Dados"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, nome_cliente, status_funil, resumo_ia, temperatura_lead FROM leads WHERE REPLACE(REPLACE(REPLACE(REPLACE(whatsapp, ' ', ''), '-', ''), '(', ''), ')', '') LIKE '%' || '{{ $json.whatsapp }}' || '%';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [3400, 400],
+      "id": "0848347b-8c7e-41bc-a602-00a0d0d7d5e0",
+      "name": "Check DB for Lead",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "1oeJQjqLzsUVyIhR",
+          "name": "Postgres account VPS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const queryResult = $input.all();\nconst incoming = $node[\"Limpar Dados\"].json;\n\nlet lead = null;\nlet exists = false;\n\nif (queryResult.length > 0 && queryResult[0].json && queryResult[0].json.id) {\n  lead = queryResult[0].json;\n  exists = true;\n}\n\nlet prompt = \"\";\nif (exists) {\n  prompt = `Este cliente já tem histórico.\\nNome: \"${lead.nome_cliente}\"\\nResumo anterior: \"${lead.resumo_ia || 'Nenhum'}\"\\nFase: \"${lead.status_funil}\"\\n\\nNova mensagem do cliente:\\n\"${incoming.conversa}\"\\n\\nAnalise considerando o histórico. Atualize o resumo.`;\n} else {\n  prompt = `Primeiro contato deste cliente.\\nMensagem:\\n\"${incoming.conversa}\"\\n\\nAnalise e extraia os dados para qualificar o lead.`;\n}\n\nreturn {\n  json: {\n    prompt,\n    exists,\n    lead_id: exists ? lead.id : null,\n    whatsapp: incoming.whatsapp,\n    nome_cliente: incoming.nome_cliente,\n    conversa: incoming.conversa\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [3600, 400],
+      "id": "d548f7dd-6c01-49ab-82e7-cb2824bf39f1",
+      "name": "Merge Context"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "promptType": "define",
+        "text": "=Você é uma IA especialista em serralheria (SOS). Analise a conversa e extraia dados técnicos e comerciais.\n\nHistórico:\n{{ $json.prompt }}\n\nREGRAS:\n1. Se for apenas saudação: deixe campos técnicos como null, \"proxima_acao\": \"Saudar e perguntar qual serviço\", \"temperatura_lead\": \"Morno\", gere \"resposta_cliente\" amigável.\n\n2. Se especificou serviço: extraia dados, gere \"resposta_cliente\" confirmando e pedindo o que faltar.\n\n3. Gere \"resumo_ia\": texto natural explicando o que o cliente quer, o que já tem, o que falta.\n\n4. \"insight_rapido\" (novo): observação comercial útil (ex: \"Cliente parece ter urgência\", \"Já citou medidas, bom sinal\", \"Recorrente, já fechou antes\").\n\nResponda APENAS JSON, sem ```:\n{\n  \"nome_cliente\": \"...\",\n  \"tipo_servico\": \"Portão|Grade|Corrimão|Cobertura|Estrutura Metálica|null\",\n  \"material\": \"Alumínio|Ferro|Inox|null\",\n  \"medidas_brutas\": \"texto com medidas citadas ou null\",\n  \"cor_acabamento\": \"cor citada ou null\",\n  \"resumo_ia\": \"resumo natural do atendimento\",\n  \"proxima_acao\": \"melhor próxima ação\",\n  \"temperatura_lead\": \"Quente|Morno|Frio|Curioso\",\n  \"insight_rapido\": \"observação comercial\",\n  \"resposta_cliente\": \"mensagem para o cliente\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [3800, 400],
+      "id": "f3eae7cd-2c8e-4e31-8f11-5d6ce7d96768",
+      "name": "IA Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "rhBTw9NRAltxhyDH",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const jsonInput = $input.item.json;\nlet raw = jsonInput.output || jsonInput.text;\nif (!raw && jsonInput.message) raw = jsonInput.message.content;\nif (!raw) throw new Error('Resposta vazia da IA');\n\nraw = raw.replace(/```json/g, '').replace(/```/g, '').trim();\nconst d = JSON.parse(raw);\n\nconst mergeNode = $node[\"Merge Context\"].json;\n\nconst payload = {\n  whatsapp: mergeNode.whatsapp,\n  nome_cliente: d.nome_cliente || mergeNode.nome_cliente || 'Cliente WhatsApp',\n  tipo_servico: d.tipo_servico || null,\n  material: d.material || null,\n  medidas_brutas: d.medidas_brutas || null,\n  cor_acabamento: d.cor_acabamento || null,\n  resumo_ia: d.resumo_ia || null,\n  proxima_acao: d.proxima_acao || null,\n  temperatura_lead: d.temperatura_lead || 'Morno'\n};\n\nreturn {\n  json: {\n    ...payload,\n    resposta_cliente: d.resposta_cliente || null,\n    insight_rapido: d.insight_rapido || null,\n    conversa_original: mergeNode.conversa\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [4000, 400],
+      "id": "bd75a247-5fac-4d55-bfa2-85b2a2d2c278",
+      "name": "Map to Webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CRM_WEBHOOK_URL || 'http://crm-serralheria:5000/api/leads/webhook-ingest' }}",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"whatsapp\": \"{{ $json.whatsapp }}\",\n  \"nome_cliente\": {{ JSON.stringify($json.nome_cliente) }},\n  \"mensagem\": {{ JSON.stringify($json.conversa_original) }},\n  \"tipo_servico\": {{ JSON.stringify($json.tipo_servico) }},\n  \"material\": {{ JSON.stringify($json.material) }},\n  \"medidas_brutas\": {{ JSON.stringify($json.medidas_brutas) }},\n  \"cor_acabamento\": {{ JSON.stringify($json.cor_acabamento) }},\n  \"resumo_ia\": {{ JSON.stringify($json.resumo_ia) }},\n  \"proxima_acao\": {{ JSON.stringify($json.proxima_acao) }},\n  \"temperatura_lead\": {{ JSON.stringify($json.temperatura_lead) }},\n  \"resposta_sugerida\": {{ JSON.stringify($json.resposta_cliente) }}\n}",
+        "options": {
+          "timeout": 10000,
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "postion": [4200, 400],
+      "id": "48805f56-fd37-4dfb-8ef4-b6e9c6cdc20d",
+      "name": "Call CRM Webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "12389b66-b733-460a-8f9f-6388d9dbc7da",
+              "leftValue": "={{ $node[\"Map to Webhook\"].json.resposta_cliente }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "isNotEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [4400, 400],
+      "id": "2212ee44-d144-4436-a56c-7e50a55710da",
+      "name": "Tem resposta?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_API_URL || 'https://evolution.automacao.free.nf/message/sendText/celularteste' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY || '52397EAD055D-481F-8911-3F06BCC5D370' }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $node[\"Limpar Dados\"].json.whatsapp }}\",\n  \"options\": {\n    \"delay\": 1200,\n    \"presence\": \"composing\"\n  },\n  \"text\": \"{{ $node[\"Map to Webhook\"].json.resposta_cliente }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [4600, 300],
+      "id": "5d625c15-34dd-4d11-b8f8-e2da210be7fc",
+      "name": "Enviar WhatsApp"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [4600, 500],
+      "id": "db777c22-e662-4433-8de3-50967825c7c2",
+      "name": "Sem resposta (NoOp)"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Limpar Dados", "type": "main", "index": 0 }]]
+    },
+    "Limpar Dados": {
+      "main": [[{ "node": "Check DB for Lead", "type": "main", "index": 0 }]]
+    },
+    "Check DB for Lead": {
+      "main": [[{ "node": "Merge Context", "type": "main", "index": 0 }]]
+    },
+    "Merge Context": {
+      "main": [[{ "node": "IA Gemini", "type": "main", "index": 0 }]]
+    },
+    "IA Gemini": {
+      "main": [[{ "node": "Map to Webhook", "type": "main", "index": 0 }]]
+    },
+    "Map to Webhook": {
+      "main": [[{ "node": "Call CRM Webhook", "type": "main", "index": 0 }]]
+    },
+    "Call CRM Webhook": {
+      "main": [[{ "node": "Tem resposta?", "type": "main", "index": 0 }]]
+    },
+    "Tem resposta?": {
+      "main": [
+        [],
+        [{ "node": "Sem resposta (NoOp)", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "660b816e-2cdd-48e5-84fc-9437d1a5ceb0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "190ab05e569beca3ddd243a48879f3a87c4d2147e196c24032e1cdfd29911be5"
+  },
+  "nodeGroups": [],
+  "id": "Oib7rkjd07iNQInJ",
+  "tags": []
+}
