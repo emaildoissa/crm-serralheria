@@ -483,6 +483,12 @@ function App() {
             </a>
           </li>
         </ul>
+        <div className="sidebar-action">
+          <button className="sidebar-create-btn" onClick={() => { setIsCreateModalOpen(true); setSidebarOpen(false); }}>
+            <Plus size={20} />
+            Novo Pedido / Lead
+          </button>
+        </div>
         <div className="sidebar-footer">
           <span>v1.2.0 - Dockerizado</span>
         </div>
@@ -499,18 +505,22 @@ function App() {
             </button>
             <div className="header-title-area">
               <h1>
-                {currentTab === 'dashboard' && 'Dashboard & Inteligência de Operação'}
-                {currentTab === 'kanban' && 'Painel Operacional (Estágios da Obra)'}
-                {currentTab === 'agenda' && 'Controle de Visitas, Medição e Instalação'}
-                {currentTab === 'producao' && 'Status de Produção e Fábrica'}
+                <span className="hide-mobile">
+                  {currentTab === 'dashboard' && 'Dashboard & Inteligência de Operação'}
+                  {currentTab === 'kanban' && 'Painel Operacional (Estágios da Obra)'}
+                  {currentTab === 'agenda' && 'Controle de Visitas, Medição e Instalação'}
+                  {currentTab === 'producao' && 'Status de Produção e Fábrica'}
+                </span>
+                <span className="show-mobile">
+                  {currentTab === 'dashboard' && 'Dashboard'}
+                  {currentTab === 'kanban' && 'Funil'}
+                  {currentTab === 'agenda' && 'Agenda'}
+                  {currentTab === 'producao' && 'Produção'}
+                </span>
               </h1>
             </div>
           </div>
-          <div className="header-actions">
-            <button className="btn btn-primary" onClick={() => setIsCreateModalOpen(true)}>
-              <Plus size={18} /> Novo Pedido / Lead
-            </button>
-          </div>
+          <div className="header-actions" />
         </header>
 
         {/* -------------------- TAB: DASHBOARD & IA -------------------- */}
