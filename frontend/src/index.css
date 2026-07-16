@@ -1380,32 +1380,46 @@ textarea.form-control {
     grid-template-columns: 1fr;
     padding: 16px;
     gap: 16px;
+    min-width: 0;
+    width: 100%;
+    overflow: hidden;
   }
 
   .db-section-large {
     grid-column: span 1;
     padding: 16px;
     min-height: auto;
+    min-width: 0;
+    width: 100%;
+    overflow-x: auto;
   }
 
   .db-section-large h3 {
     font-size: 0.85rem;
+    word-break: break-word;
   }
 
   .db-table {
     font-size: 0.75rem;
-    display: block;
-    overflow-x: auto;
+    width: 100%;
   }
 
   .db-table th,
   .db-table td {
     padding: 8px 10px;
-    white-space: nowrap;
+    white-space: normal;
+    word-break: break-word;
+    min-width: 0;
+  }
+
+  .db-table th:last-child,
+  .db-table td:last-child {
+    min-width: 120px;
   }
 
   .metric-card {
     padding: 16px;
+    min-width: 0;
   }
 
   .metric-data p {
