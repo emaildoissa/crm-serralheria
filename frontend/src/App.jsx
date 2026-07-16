@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   DndContext, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors
 } from '@dnd-kit/core';
-import { 
+import {
   LayoutDashboard, 
   KanbanSquare, 
   Calendar, 
@@ -29,7 +29,9 @@ import {
   Send,
   ChevronDown,
   ChevronRight,
-  Loader2
+  Loader2,
+  Menu,
+  X
 } from 'lucide-react';
 
 const API_URL = import.meta.env.DEV ? 'http://localhost:5000/api' : (import.meta.env.VITE_API_URL || '/api');
@@ -348,6 +350,7 @@ function App() {
   const [sendingMsg, setSendingMsg] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [activeDragId, setActiveDragId] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -431,17 +434,22 @@ function App() {
   return (
     <div className="app-container">
       {/* Sidebar de Navegação */}
-      <aside className="sidebar">
+      <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-brand">
-          <div className="sidebar-logo-icon">S</div>
-          <span className="sidebar-brand-text">Serralheria OS</span>
+          <div className="sidebar-brand-inner">
+            <div className="sidebar-logo-icon">S</div>
+            <span className="sidebar-brand-text">Serralheria OS</span>
+          </div>
+          <button className="sidebar-close-btn" onClick={() => setSidebarOpen(false)} aria-label="Fechar menu">
+            <X size={20} />
+          </button>
         </div>
         
         <ul className="sidebar-menu">
           <li>
             <a 
               className={`sidebar-menu-item ${currentTab === 'dashboard' ? 'active' : ''}`}
-              onClick={() => { setCurrentTab('dashboard'); fetchDashboardData(); }}
+              onClick={() => { setCurrentTab('dashboard'); fetchDashboardData(); setSidebarOpen(false); }}
             >
               <LayoutDashboard size={20} />
               Dashboard & IA
@@ -450,7 +458,7 @@ function App() {
           <li>
             <a 
               className={`sidebar-menu-item ${currentTab === 'kanban' ? 'active' : ''}`}
-              onClick={() => { setCurrentTab('kanban'); fetchLeads(); }}
+              onClick={() => { setCurrentTab('kanban'); fetchLeads(); setSidebarOpen(false); }}
             >
               <KanbanSquare size={20} />
               Funil de Obras
@@ -459,7 +467,7 @@ function App() {
           <li>
             <a 
               className={`sidebar-menu-item ${currentTab === 'agenda' ? 'active' : ''}`}
-              onClick={() => setCurrentTab('agenda')}
+              onClick={() => { setCurrentTab('agenda'); setSidebarOpen(false); }}
             >
               <Calendar size={20} />
               Agenda Técnica
@@ -468,7 +476,7 @@ function App() {
           <li>
             <a 
               className={`sidebar-menu-item ${currentTab === 'producao' ? 'active' : ''}`}
-              onClick={() => setCurrentTab('producao')}
+              onClick={() => { setCurrentTab('producao'); setSidebarOpen(false); }}
             >
               <Wrench size={20} />
               Fábrica & Produção
@@ -480,16 +488,23 @@ function App() {
         </div>
       </aside>
 
+      <div className={`sidebar-backdrop ${sidebarOpen ? 'open' : ''}`} onClick={() => setSidebarOpen(false)} />
+
       {/* Área Principal */}
       <main className="main-content">
         <header className="app-header">
-          <div className="header-title-area">
-            <h1>
-              {currentTab === 'dashboard' && 'Dashboard & Inteligência de Operação'}
-              {currentTab === 'kanban' && 'Painel Operacional (Estágios da Obra)'}
-              {currentTab === 'agenda' && 'Controle de Visitas, Medição e Instalação'}
-              {currentTab === 'producao' && 'Status de Produção e Fábrica'}
-            </h1>
+          <div className="header-left">
+            <button className="hamburger-btn" onClick={() => setSidebarOpen(true)} aria-label="Abrir menu">
+              <Menu size={22} />
+            </button>
+            <div className="header-title-area">
+              <h1>
+                {currentTab === 'dashboard' && 'Dashboard & Inteligência de Operação'}
+                {currentTab === 'kanban' && 'Painel Operacional (Estágios da Obra)'}
+                {currentTab === 'agenda' && 'Controle de Visitas, Medição e Instalação'}
+                {currentTab === 'producao' && 'Status de Produção e Fábrica'}
+              </h1>
+            </div>
           </div>
           <div className="header-actions">
             <button className="btn btn-primary" onClick={() => setIsCreateModalOpen(true)}>
