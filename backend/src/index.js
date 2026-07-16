@@ -194,20 +194,9 @@ app.use('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date() });
 });
 
-// --- SERVIR FRONTEND ESTÁTICO EM PRODUÇÃO ---
-if (process.env.NODE_ENV === 'production') {
-  // Pasta onde o Docker ou build local vai colocar os arquivos do React compilados
-  const publicPath = path.join(__dirname, '../public');
-  app.use(express.static(publicPath));
-
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(publicPath, 'index.html'));
-  });
-} else {
-  app.get('/', (req, res) => {
-    res.send('Servidor do SOS em modo de desenvolvimento. O Frontend roda na porta do Vite.');
-  });
-}
+app.get('/', (req, res) => {
+  res.json({ app: 'CRM Serralheria - API', docs: '/api/health' });
+});
 
 // Iniciar Servidor
 app.listen(PORT, '0.0.0.0', () => {

@@ -32,7 +32,7 @@ import {
   Loader2
 } from 'lucide-react';
 
-const API_URL = import.meta.env.DEV ? 'http://localhost:5000/api' : '/api';
+const API_URL = import.meta.env.DEV ? 'http://localhost:5000/api' : (import.meta.env.VITE_API_URL || '/api');
 
 // Lista das 13 fases do funil da serralheria
 const COLUMNS = [
