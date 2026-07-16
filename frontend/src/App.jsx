@@ -351,6 +351,7 @@ function App() {
   const [replyText, setReplyText] = useState('');
   const [activeDragId, setActiveDragId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [taskText, setTaskText] = useState('');
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -1096,21 +1097,6 @@ function App() {
                     </div>
                   </div>
 
-                  {/* Bloco 3: Ações Rápidas */}
-                  <div className="lead-block lead-actions-block">
-                    <div className="block-header"><Send size={18} color="#06d6a0" /><h3>Ações Rápidas</h3></div>
-                    <div className="quick-actions-grid">
-                      <button className="quick-action-btn" onClick={() => { navigator.clipboard.writeText(`Olá ${editForm.nome_cliente}! Recebemos sua solicitação de ${editForm.tipo_servico || 'serviço'}.`); alert('Mensagem copiada!'); }}><MessageSquare size={16} /> Responder</button>
-                      <button className="quick-action-btn" onClick={() => { navigator.clipboard.writeText(`Olá ${editForm.nome_cliente}! Você poderia enviar fotos do local para agilizar o orçamento?`); alert('Mensagem copiada!'); }}><Camera size={16} /> Pedir Fotos</button>
-                      <button className="quick-action-btn" onClick={() => { navigator.clipboard.writeText(`Olá ${editForm.nome_cliente}! Para confirmarmos as medidas, informe largura e altura do vão.`); alert('Mensagem copiada!'); }}><Ruler size={16} /> Pedir Medidas</button>
-                      <button className="quick-action-btn" onClick={() => setEditMode(true)}><Calendar size={16} /> Marcar Visita</button>
-                      <button className="quick-action-btn" onClick={() => { window.open(`https://wa.me/${(editForm.whatsapp || '').replace(/\D/g, '')}`, '_blank'); }}><User size={16} /> WhatsApp</button>
-                      <button className="quick-action-btn" onClick={() => { fetchTimeline(editForm.id); fetchInsights(editForm.id); setExpandedPanels(prev => ({ ...prev, insights: true })); }}><RefreshCw size={16} /> Atualizar</button>
-                      <button className="quick-action-btn" onClick={() => { const s = prompt('Nova fase:', editForm.status_funil); if (s) handleUpdateStatus(editForm.id, s); }}><ArrowRight size={16} /> Mover Etapa</button>
-                      <button className="quick-action-btn" onClick={() => { const t = prompt('Descreva a tarefa:'); if (t) fetch(`${API_URL}/leads/${editForm.id}/timeline`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tipo: 'tarefa_criada', descricao: `Tarefa: ${t}`, responsavel: 'Sistema' }) }).then(() => fetchTimeline(editForm.id)); }}><CheckSquare size={16} /> Criar Tarefa</button>
-                    </div>
-                  </div>
-
                   {/* Blocos 4-6: Accordions */}
                   <div className="lead-accordions">
                     {/* Conversa */}
@@ -1133,6 +1119,36 @@ function App() {
                               <p className="chat-empty">Nenhuma conversa registrada.</p>
                             )}
                           </div>
+
+                          <div className="chat-quick-actions">
+                            <button className="chat-quick-action" onClick={() => setReplyText(`Olá ${editForm.nome_cliente}! Recebemos sua solicitação de ${editForm.tipo_servico || 'serviço'}.`)}><MessageSquare size={14} /> Responder</button>
+                            <button className="chat-quick-action" onClick={() => setReplyText(`Olá ${editForm.nome_cliente}! Você poderia enviar fotos do local para agilizar o orçamento?`)}><Camera size={14} /> Fotos</button>
+                            <button className="chat-quick-action" onClick={() => setReplyText(`Olá ${editForm.nome_cliente}! Para confirmarmos as medidas, informe largura e altura do vão.`)}><Ruler size={14} /> Medidas</button>
+                            <button className="chat-quick-action" onClick={() => { window.open(`https://wa.me/${(editForm.whatsapp || '').replace(/\D/g, '')}`, '_blank'); }}><User size={14} /> WhatsApp</button>
+                            <button className="chat-quick-action" onClick={() => setEditMode(true)}><Calendar size={14} /> Visita</button>
+                          </div>
+
+                          <div className="chat-inline-controls">
+                            <div className="chat-inline-item">
+                              <span className="chat-inline-label">Mover para:</span>
+                              <select className="form-control chat-stage-select" value={editForm.status_funil} onChange={e => handleUpdateStatus(editForm.id, e.target.value)}>
+                                {COLUMNS.map(col => <option key={col.id} value={col.id}>{col.label}</option>)}
+                              </select>
+                            </div>
+                            <div className="chat-inline-item">
+                              <span className="chat-inline-label">Tarefa:</span>
+                              <input type="text" className="form-control chat-task-input" placeholder="Descreva..." value={taskText} onChange={e => setTaskText(e.target.value)} />
+                              <button className="btn btn-sm chat-task-btn" onClick={() => {
+                                if (!taskText.trim()) return;
+                                fetch(`${API_URL}/leads/${editForm.id}/timeline`, {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ tipo: 'tarefa_criada', descricao: `Tarefa: ${taskText}`, responsavel: 'Sistema' })
+                                }).then(() => { setTaskText(''); fetchTimeline(editForm.id); });
+                              }}>+</button>
+                            </div>
+                          </div>
+
                           {editForm.resposta_sugerida && (
                             <div className="ia-suggestion-banner">
                               <Sparkles size={14} color="#829aff" />
