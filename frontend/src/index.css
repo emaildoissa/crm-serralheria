@@ -1432,7 +1432,8 @@ textarea.form-control {
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow: hidden;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .context-detail-header {
@@ -1586,7 +1587,8 @@ textarea.form-control {
 }
 
 .context-chat-section {
-  flex: 1;
+  flex: 1 1 0;
+  min-height: 180px;
   display: flex;
   flex-direction: column;
   margin: 16px 28px;
@@ -1609,7 +1611,8 @@ textarea.form-control {
 }
 
 .context-chat-messages {
-  flex: 1;
+  flex: 1 1 0;
+  min-height: 0;
   overflow-y: auto;
   padding: 16px 18px;
   display: flex;
