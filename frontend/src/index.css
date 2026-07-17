@@ -1433,6 +1433,7 @@ textarea.form-control {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  overflow-y: auto;
 }
 
 .context-detail-header {
