@@ -1327,7 +1327,302 @@ textarea.form-control {
 .metric-card:nth-child(3) { animation-delay: 0.15s; }
 .metric-card:nth-child(4) { animation-delay: 0.2s; }
 
-/* ===================== MOBILE RESPONSIVE ===================== */
+/* ===================== IA CONTEXTUAL ===================== */
+
+.context-container {
+  display: flex;
+  height: calc(100vh - 70px);
+  overflow: hidden;
+}
+
+.context-list {
+  width: 300px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  background: rgba(15, 13, 12, 0.4);
+}
+
+.context-list-header {
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.context-list-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 0.3px;
+}
+
+.context-list-count {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  background: rgba(168, 162, 158, 0.08);
+  padding: 2px 10px;
+  border-radius: 20px;
+}
+
+.context-list-empty {
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+.context-list-item {
+  padding: 14px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(168, 162, 158, 0.03);
+  transition: var(--transition);
+}
+
+.context-list-item:hover {
+  background: rgba(168, 162, 158, 0.04);
+}
+
+.context-list-item.active {
+  background: rgba(217, 119, 6, 0.08);
+  border-left: 3px solid var(--primary-hover);
+}
+
+.context-item-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.88rem;
+  margin-bottom: 4px;
+  color: var(--text-main);
+}
+
+.context-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.7rem;
+}
+
+.context-item-temp {
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-family: var(--font-mono);
+}
+
+.context-item-stage {
+  color: var(--text-dim);
+  font-size: 0.68rem;
+}
+
+.context-detail {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.context-detail-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.context-detail-header {
+  padding: 20px 28px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.context-detail-header h2 {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.context-detail-sub {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+
+.context-detail-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.context-empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  gap: 16px;
+  padding: 40px;
+}
+
+.context-empty-state svg {
+  opacity: 0.3;
+}
+
+.context-empty-state h3 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.context-empty-state p {
+  font-size: 0.88rem;
+  text-align: center;
+  max-width: 360px;
+  line-height: 1.6;
+}
+
+.context-analysis-card {
+  margin: 16px 28px 0 28px;
+  background: linear-gradient(145deg, rgba(28, 25, 23, 0.9), rgba(217, 119, 6, 0.03));
+  border: 1px solid rgba(217, 119, 6, 0.15);
+  border-radius: var(--radius);
+  padding: 18px;
+}
+
+.context-analysis-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(217, 119, 6, 0.1);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.context-analysis-cost {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-dim);
+}
+
+.context-analysis-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.context-analysis-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.context-analysis-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+  font-family: var(--font-mono);
+}
+
+.context-analysis-value {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.context-analysis-resumo {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: #e7e5e4;
+  background: rgba(0,0,0,0.2);
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 10px;
+  border-left: 3px solid #d97706;
+}
+
+.context-analysis-suggest {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(217, 119, 6, 0.06);
+  border: 1px solid rgba(217, 119, 6, 0.15);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.context-analysis-suggest .context-analysis-label {
+  font-size: 0.65rem;
+  color: #d97706;
+  white-space: nowrap;
+}
+
+.context-analysis-suggest > span:nth-child(2) {
+  flex: 1;
+  color: var(--text-muted);
+  font-style: italic;
+  min-width: 100px;
+}
+
+.context-chat-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin: 16px 28px;
+  background: var(--bg-card);
+  border: var(--glass-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.context-chat-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-color);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.context-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.context-chat-input {
+  display: flex;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border-color);
+}
 
 .hamburger-btn {
   display: none;
@@ -1679,6 +1974,26 @@ textarea.form-control {
 
   .production-container h2 {
     font-size: 0.95rem;
+  }
+  .context-analysis-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .context-detail-header {
+    flex-direction: column;
+    padding: 16px;
+  }
+
+  .context-analysis-card {
+    margin: 12px 16px;
+  }
+
+  .context-chat-section {
+    margin: 12px 16px;
+  }
+
+  .context-list {
+    width: 240px;
   }
 }
 

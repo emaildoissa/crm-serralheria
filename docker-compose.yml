@@ -5,6 +5,17 @@ services:
     image: emaildoissa/crm-serralheria:latest
     container_name: crm-serralheria
     restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.crm.rule=Host(`crm-serralheria.automacao.free.nf`)
+      - traefik.http.routers.crm.entrypoints=websecure
+      - traefik.http.routers.crm.tls=true
+      - traefik.http.routers.crm.tls.certresolver=letsencrypt
+      - traefik.http.routers.crm.middlewares=crm-cors@docker
+      - traefik.http.middlewares.crm-cors.headers.accesscontrolalloworiginlist=https://crm-serralheria.vercel.app
+      - traefik.http.middlewares.crm-cors.headers.accesscontrolallowmethods=GET,POST,PUT,DELETE,OPTIONS
+      - traefik.http.middlewares.crm-cors.headers.accesscontrolallowheaders=*
+      - traefik.http.middlewares.crm-cors.headers.accesscontrolmaxage=86400
     environment:
       PORT: '5000'
       NODE_ENV: 'production'

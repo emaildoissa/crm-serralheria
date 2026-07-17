@@ -125,6 +125,13 @@ function App() {
     }
   }, [selectedLeadId]);
 
+  useEffect(() => {
+    if (contextLeadId) {
+      fetchContextLeadDetail(contextLeadId);
+      setContextAnalysis(null);
+    }
+  }, [contextLeadId]);
+
   const fetchLeads = async () => {
     try {
       const res = await fetch(`${API_URL}/leads`);
@@ -243,6 +250,57 @@ function App() {
       setLeadAnalysis({ error: 'Falha na requisição' });
     }
     setAnalyzing(false);
+  };
+
+  const fetchContextLeadDetail = async (id) => {
+    try {
+      const res = await fetch(`${API_URL}/leads/${id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setContextLeadData(data);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const analyzeContextLead = async (id) => {
+    setContextAnalyzing(true);
+    setContextAnalysis(null);
+    try {
+      const res = await fetch(`${API_URL}/leads/${id}/analyze`, { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setContextAnalysis(data);
+        fetchContextLeadDetail(id);
+      } else {
+        const err = await res.json();
+        setContextAnalysis({ error: err.error || 'Erro ao analisar' });
+      }
+    } catch (err) {
+      console.error(err);
+      setContextAnalysis({ error: 'Falha na requisição' });
+    }
+    setContextAnalyzing(false);
+  };
+
+  const sendContextMessage = async () => {
+    if (!contextReplyText.trim() || !contextLeadId) return;
+    setContextSending(true);
+    try {
+      const res = await fetch(`${API_URL}/leads/${contextLeadId}/send-message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mensagem: contextReplyText, remetente: 'vendedor' })
+      });
+      if (res.ok) {
+        setContextReplyText('');
+        fetchContextLeadDetail(contextLeadId);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setContextSending(false);
   };
 
   const handleUpdateLead = async (e) => {
@@ -377,6 +435,14 @@ function App() {
   const [analyzing, setAnalyzing] = useState(false);
   const [leadAnalysis, setLeadAnalysis] = useState(null);
 
+  // IA Contextual states
+  const [contextLeadId, setContextLeadId] = useState(null);
+  const [contextLeadData, setContextLeadData] = useState(null);
+  const [contextAnalysis, setContextAnalysis] = useState(null);
+  const [contextAnalyzing, setContextAnalyzing] = useState(false);
+  const [contextReplyText, setContextReplyText] = useState('');
+  const [contextSending, setContextSending] = useState(false);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
@@ -507,6 +573,15 @@ function App() {
               Fábrica & Produção
             </a>
           </li>
+          <li>
+            <a 
+              className={`sidebar-menu-item ${currentTab === 'ia-contextual' ? 'active' : ''}`}
+              onClick={() => { setCurrentTab('ia-contextual'); fetchLeads(); setSidebarOpen(false); }}
+            >
+              <Sparkles size={20} />
+              IA Contextual
+            </a>
+          </li>
         </ul>
         <div className="sidebar-action">
           <button className="sidebar-create-btn" onClick={() => { setIsCreateModalOpen(true); setSidebarOpen(false); }}>
@@ -535,12 +610,14 @@ function App() {
                   {currentTab === 'kanban' && 'Painel Operacional (Estágios da Obra)'}
                   {currentTab === 'agenda' && 'Controle de Visitas, Medição e Instalação'}
                   {currentTab === 'producao' && 'Status de Produção e Fábrica'}
+                  {currentTab === 'ia-contextual' && 'IA Contextual — Análise de Conversas'}
                 </span>
                 <span className="show-mobile">
                   {currentTab === 'dashboard' && 'Dashboard'}
                   {currentTab === 'kanban' && 'Funil'}
                   {currentTab === 'agenda' && 'Agenda'}
                   {currentTab === 'producao' && 'Produção'}
+                  {currentTab === 'ia-contextual' && 'IA'}
                 </span>
               </h1>
             </div>
@@ -782,6 +859,161 @@ function App() {
                 <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '40px' }}>
                   Nenhuma obra em estágio de Fabricação ou Instalação no momento.
                 </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* -------------------- TAB: IA CONTEXTUAL -------------------- */}
+        {currentTab === 'ia-contextual' && (
+          <div className="context-container">
+            <div className="context-list">
+              <div className="context-list-header">
+                <span className="context-list-title">Conversas</span>
+                <span className="context-list-count">{leads.length}</span>
+              </div>
+              {leads.length === 0 ? (
+                <div className="context-list-empty">Nenhuma conversa</div>
+              ) : (
+                leads.map(lead => (
+                  <div
+                    key={lead.id}
+                    className={`context-list-item ${contextLeadId === lead.id ? 'active' : ''}`}
+                    onClick={() => setContextLeadId(lead.id)}
+                  >
+                    <div className="context-item-name">{lead.nome_cliente}</div>
+                    <div className="context-item-meta">
+                      <span className={`context-item-temp tag-temp-${(lead.temperatura_lead || 'morno').toLowerCase()}`}>
+                        {lead.temperatura_lead || 'Morno'}
+                      </span>
+                      <span className="context-item-stage">{lead.status_funil}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="context-detail">
+              {contextLeadId && contextLeadData ? (
+                <div className="context-detail-inner">
+                  <div className="context-detail-header">
+                    <div>
+                      <h2>{contextLeadData.lead?.nome_cliente}</h2>
+                      <div className="context-detail-sub">
+                        <span>{contextLeadData.lead?.whatsapp || 'Sem WhatsApp'}</span>
+                        <span className={`context-item-temp tag-temp-${(contextLeadData.lead?.temperatura_lead || 'morno').toLowerCase()}`}>
+                          {contextLeadData.lead?.temperatura_lead || 'Morno'}
+                        </span>
+                        <span>{contextLeadData.lead?.status_funil}</span>
+                      </div>
+                    </div>
+                    <div className="context-detail-actions">
+                      <button
+                        className="btn btn-primary"
+                        onClick={() => analyzeContextLead(contextLeadId)}
+                        disabled={contextAnalyzing}
+                      >
+                        {contextAnalyzing ? <Loader2 size={16} className="spin" /> : <Sparkles size={16} />}
+                        {contextAnalyzing ? 'Analisando...' : 'Analisar Agora'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {contextAnalysis && !contextAnalysis.error && (
+                    <div className="context-analysis-card">
+                      <div className="context-analysis-header">
+                        <Sparkles size={18} color="#829aff" />
+                        <span>Análise da IA</span>
+                        <span className="context-analysis-cost">
+                          {contextAnalysis.custo_centavos > 0 ? `~R$ ${contextAnalysis.custo_centavos.toFixed(4)}` : 'grátis'}
+                        </span>
+                      </div>
+                      <div className="context-analysis-grid">
+                        <div className="context-analysis-item">
+                          <span className="context-analysis-label">Sentimento</span>
+                          <span className="context-analysis-value" style={{
+                            color: contextAnalysis.sentimento === 'frustrado' ? '#dc2626' :
+                                   contextAnalysis.sentimento === 'emergencial' ? '#ea580c' :
+                                   contextAnalysis.sentimento === 'interessado' ? '#16a34a' :
+                                   contextAnalysis.sentimento === 'negociação' ? '#ca8a04' : 'var(--text-muted)'
+                          }}>
+                            {contextAnalysis.sentimento || '—'}
+                          </span>
+                        </div>
+                        <div className="context-analysis-item">
+                          <span className="context-analysis-label">Objeções</span>
+                          <span className="context-analysis-value">
+                            {contextAnalysis.objecoes?.length > 0 ? contextAnalysis.objecoes.join(', ') : 'Nenhuma'}
+                          </span>
+                        </div>
+                        <div className="context-analysis-item">
+                          <span className="context-analysis-label">Ação Recomendada</span>
+                          <span className="context-analysis-value" style={{ color: 'var(--primary-hover)' }}>
+                            {contextAnalysis.acao_recomendada || '—'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="context-analysis-resumo">
+                        {contextAnalysis.resumo || 'Resumo não disponível'}
+                      </div>
+                      {contextAnalysis.resposta_sugerida && (
+                        <div className="context-analysis-suggest">
+                          <span className="context-analysis-label">Responder:</span>
+                          <span>{contextAnalysis.resposta_sugerida}</span>
+                          <button className="btn btn-sm" onClick={() => setContextReplyText(contextAnalysis.resposta_sugerida)}>Usar</button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {contextAnalysis?.error && (
+                    <div className="context-analysis-card" style={{ borderColor: 'rgba(220, 38, 38, 0.3)' }}>
+                      <p style={{ color: 'var(--temp-quente)', fontSize: '0.85rem', textAlign: 'center', padding: '8px' }}>
+                        {contextAnalysis.error}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="context-chat-section">
+                    <div className="context-chat-header">
+                      <MessageSquare size={16} />
+                      <span>Histórico ({contextLeadData.mensagens?.length || 0} mensagens)</span>
+                    </div>
+                    <div className="context-chat-messages">
+                      {contextLeadData.mensagens && contextLeadData.mensagens.length > 0 ? (
+                        contextLeadData.mensagens.map(msg => (
+                          <div key={msg.id} className={`chat-msg msg-${msg.remetente === 'cliente' ? 'client' : msg.remetente === 'vendedor' ? 'agent' : 'ia'}`}>
+                            <div className="chat-msg-header">
+                              {msg.remetente === 'cliente' ? 'Cliente' : msg.remetente === 'vendedor' ? 'Vendedor' : 'IA'} • {new Date(msg.created_at).toLocaleString('pt-BR')}
+                            </div>
+                            <div className="chat-msg-text">{msg.mensagem}</div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="chat-empty">Nenhuma mensagem registrada.</p>
+                      )}
+                    </div>
+                    <div className="context-chat-input">
+                      <input
+                        type="text"
+                        className="form-control chat-input"
+                        placeholder="Digite sua mensagem..."
+                        value={contextReplyText}
+                        onChange={e => setContextReplyText(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendContextMessage(); } }}
+                      />
+                      <button className="btn btn-primary btn-send" onClick={sendContextMessage} disabled={contextSending || !contextReplyText.trim()}>
+                        {contextSending ? <Loader2 size={16} className="spin" /> : <Send size={16} />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="context-empty-state">
+                  <Sparkles size={48} />
+                  <h3>IA Contextual</h3>
+                  <p>Selecione uma conversa ao lado para analisar o contexto e responder com ajuda da IA.</p>
+                </div>
               )}
             </div>
           </div>
