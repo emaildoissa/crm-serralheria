@@ -125,13 +125,6 @@ function App() {
     }
   }, [selectedLeadId]);
 
-  useEffect(() => {
-    if (contextLeadId) {
-      fetchContextLeadDetail(contextLeadId);
-      setContextAnalysis(null);
-    }
-  }, [contextLeadId]);
-
   const fetchLeads = async () => {
     try {
       const res = await fetch(`${API_URL}/leads`);
@@ -442,6 +435,13 @@ function App() {
   const [contextAnalyzing, setContextAnalyzing] = useState(false);
   const [contextReplyText, setContextReplyText] = useState('');
   const [contextSending, setContextSending] = useState(false);
+
+  useEffect(() => {
+    if (contextLeadId) {
+      fetchContextLeadDetail(contextLeadId);
+      setContextAnalysis(null);
+    }
+  }, [contextLeadId]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
