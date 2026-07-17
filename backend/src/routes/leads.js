@@ -813,6 +813,7 @@ router.get('/:id/insights', async (req, res) => {
 router.post('/:id/analyze', async (req, res) => {
   try {
     const leadId = req.params.id;
+    const modo = req.query.modo || 'lead';
     const leadRes = await db.query('SELECT * FROM leads WHERE id = $1', [leadId]);
     if (leadRes.rows.length === 0) {
       return res.status(404).json({ error: 'Lead não encontrado' });
@@ -833,7 +834,7 @@ router.post('/:id/analyze', async (req, res) => {
       return res.status(400).json({ error: 'N8N_ANALYZE_WEBHOOK_URL não configurado no .env' });
     }
 
-    const payload = { lead_id: leadId, mensagens };
+    const payload = { lead_id: leadId, mensagens, modo };
     const bodyStr = JSON.stringify(payload);
     const urlObj = new URL(n8nUrl);
     const https = require('https');
@@ -871,27 +872,59 @@ router.post('/:id/analyze', async (req, res) => {
       return res.status(502).json({ error: 'Resposta inválida do n8n', raw: n8nRes.data });
     }
 
-    await db.query(
-      `UPDATE leads SET 
-        sentimento = $1,
-        objecoes = $2,
-        acao_recomendada = $3,
-        resumo_ia = $4,
-        resposta_sugerida = $5,
-        ultima_analise_data = CURRENT_TIMESTAMP,
-        ultima_analise_custo = $6,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = $7`,
-      [
-        analysis.sentimento || null,
-        analysis.objecoes ? JSON.stringify(analysis.objecoes) : null,
-        analysis.acao_recomendada || null,
-        analysis.resumo || null,
-        analysis.resposta_sugerida || null,
-        analysis.custo_centavos || 0,
-        leadId
-      ]
-    );
+    if (modo === 'contextual') {
+      await db.query(
+        `UPDATE leads SET 
+          perfil_comportamental = $1,
+          padroes_contato = $2,
+          interesses_recorrentes = $3,
+          riscos = $4,
+          oportunidades = $5,
+          tempo_decisao = $6,
+          sentimento_geral = $7,
+          resumo_ia = $8,
+          resposta_sugerida = $9,
+          ultima_analise_data = CURRENT_TIMESTAMP,
+          ultima_analise_custo = $10,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $11`,
+        [
+          analysis.perfil_comportamental || null,
+          analysis.padroes_contato ? JSON.stringify(analysis.padroes_contato) : null,
+          analysis.interesses_recorrentes ? JSON.stringify(analysis.interesses_recorrentes) : null,
+          analysis.riscos ? JSON.stringify(analysis.riscos) : null,
+          analysis.oportunidades || null,
+          analysis.tempo_decisao || null,
+          analysis.sentimento_geral || null,
+          analysis.resumo || null,
+          analysis.resposta_sugerida || null,
+          analysis.custo_centavos || 0,
+          leadId
+        ]
+      );
+    } else {
+      await db.query(
+        `UPDATE leads SET 
+          sentimento = $1,
+          objecoes = $2,
+          acao_recomendada = $3,
+          resumo_ia = $4,
+          resposta_sugerida = $5,
+          ultima_analise_data = CURRENT_TIMESTAMP,
+          ultima_analise_custo = $6,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $7`,
+        [
+          analysis.sentimento || null,
+          analysis.objecoes ? JSON.stringify(analysis.objecoes) : null,
+          analysis.acao_recomendada || null,
+          analysis.resumo || null,
+          analysis.resposta_sugerida || null,
+          analysis.custo_centavos || 0,
+          leadId
+        ]
+      );
+    }
 
     res.json(analysis);
   } catch (error) {

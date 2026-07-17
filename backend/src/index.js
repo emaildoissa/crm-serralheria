@@ -111,6 +111,13 @@ async function initDatabase() {
     await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS acao_recomendada TEXT;');
     await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS ultima_analise_data TIMESTAMP WITH TIME ZONE;');
     await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS ultima_analise_custo DECIMAL(10,5);');
+    await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS perfil_comportamental TEXT;');
+    await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS padroes_contato JSONB;');
+    await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS interesses_recorrentes JSONB;');
+    await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS riscos JSONB;');
+    await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS oportunidades TEXT;');
+    await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS tempo_decisao VARCHAR(100);');
+    await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS sentimento_geral VARCHAR(50);');
     console.log('Tabelas do banco de dados verificadas/criadas com sucesso!');
 
     // Inserir dados de teste se o banco estiver vazio

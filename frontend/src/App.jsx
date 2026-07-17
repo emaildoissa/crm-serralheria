@@ -31,7 +31,11 @@ import {
   ChevronRight,
   Loader2,
   Menu,
-  X
+  X,
+  UserCheck,
+  Clock,
+  Search,
+  TrendingUp
 } from 'lucide-react';
 
 const API_URL = import.meta.env.DEV ? 'http://localhost:5000/api' : (import.meta.env.VITE_API_URL || '/api');
@@ -261,7 +265,7 @@ function App() {
     setContextAnalyzing(true);
     setContextAnalysis(null);
     try {
-      const res = await fetch(`${API_URL}/leads/${id}/analyze`, { method: 'POST' });
+      const res = await fetch(`${API_URL}/leads/${id}/analyze?modo=contextual`, { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
         setContextAnalysis(data);
@@ -923,39 +927,121 @@ function App() {
                     <div className="context-analysis-card">
                       <div className="context-analysis-header">
                         <Sparkles size={18} color="#829aff" />
-                        <span>Análise da IA</span>
+                        <span>Análise Contextual da Conversa</span>
                         <span className="context-analysis-cost">
                           {contextAnalysis.custo_centavos > 0 ? `~R$ ${contextAnalysis.custo_centavos.toFixed(4)}` : 'grátis'}
                         </span>
                       </div>
-                      <div className="context-analysis-grid">
-                        <div className="context-analysis-item">
-                          <span className="context-analysis-label">Sentimento</span>
-                          <span className="context-analysis-value" style={{
-                            color: contextAnalysis.sentimento === 'frustrado' ? '#dc2626' :
-                                   contextAnalysis.sentimento === 'emergencial' ? '#ea580c' :
-                                   contextAnalysis.sentimento === 'interessado' ? '#16a34a' :
-                                   contextAnalysis.sentimento === 'negociação' ? '#ca8a04' : 'var(--text-muted)'
-                          }}>
-                            {contextAnalysis.sentimento || '—'}
-                          </span>
+
+                      {contextAnalysis.sentimento_geral && (
+                        <div className="context-sentiment-badge" style={{
+                          color: contextAnalysis.sentimento_geral === 'frustrado' ? '#dc2626' :
+                                 contextAnalysis.sentimento_geral === 'emergencial' ? '#ea580c' :
+                                 contextAnalysis.sentimento_geral === 'interessado' ? '#16a34a' :
+                                 contextAnalysis.sentimento_geral === 'negociação' ? '#ca8a04' : 'var(--text-muted)'
+                        }}>
+                          {contextAnalysis.sentimento_geral === 'frustrado' && '😤 '}
+                          {contextAnalysis.sentimento_geral === 'emergencial' && '🚨 '}
+                          {contextAnalysis.sentimento_geral === 'interessado' && '✅ '}
+                          {contextAnalysis.sentimento_geral === 'negociação' && '🤝 '}
+                          Sentimento geral: {contextAnalysis.sentimento_geral}
+                          {contextAnalysis.tempo_decisao && ` · Decisão: ${contextAnalysis.tempo_decisao}`}
                         </div>
-                        <div className="context-analysis-item">
-                          <span className="context-analysis-label">Objeções</span>
-                          <span className="context-analysis-value">
-                            {contextAnalysis.objecoes?.length > 0 ? contextAnalysis.objecoes.join(', ') : 'Nenhuma'}
-                          </span>
+                      )}
+
+                      {contextAnalysis.perfil_comportamental && (
+                        <div className="context-profile-card">
+                          <div className="context-profile-icon">
+                            <UserCheck size={18} />
+                          </div>
+                          <div className="context-profile-body">
+                            <span className="context-profile-label">Perfil Comportamental</span>
+                            <p>{contextAnalysis.perfil_comportamental}</p>
+                          </div>
                         </div>
-                        <div className="context-analysis-item">
-                          <span className="context-analysis-label">Ação Recomendada</span>
-                          <span className="context-analysis-value" style={{ color: 'var(--primary-hover)' }}>
-                            {contextAnalysis.acao_recomendada || '—'}
-                          </span>
-                        </div>
+                      )}
+
+                      <div className="context-patterns-grid">
+                        {contextAnalysis.padroes_contato && (
+                          <div className="context-pattern-card">
+                            <div className="context-pattern-header">
+                              <Clock size={16} />
+                              <span>Padrões de Contato</span>
+                            </div>
+                            <div className="context-pattern-body">
+                              {contextAnalysis.padroes_contato.melhor_dia && (
+                                <div className="context-pattern-row">
+                                  <span className="ctx-label">Melhor dia</span>
+                                  <span className="ctx-value">{contextAnalysis.padroes_contato.melhor_dia}</span>
+                                </div>
+                              )}
+                              {contextAnalysis.padroes_contato.melhor_horario && (
+                                <div className="context-pattern-row">
+                                  <span className="ctx-label">Melhor horário</span>
+                                  <span className="ctx-value">{contextAnalysis.padroes_contato.melhor_horario}</span>
+                                </div>
+                              )}
+                              {contextAnalysis.padroes_contato.frequencia_media_dias && (
+                                <div className="context-pattern-row">
+                                  <span className="ctx-label">Frequência</span>
+                                  <span className="ctx-value">a cada {contextAnalysis.padroes_contato.frequencia_media_dias} dias</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {contextAnalysis.interesses_recorrentes && contextAnalysis.interesses_recorrentes.length > 0 && (
+                          <div className="context-pattern-card">
+                            <div className="context-pattern-header">
+                              <Search size={16} />
+                              <span>Interesses</span>
+                            </div>
+                            <div className="context-pattern-body">
+                              <div className="context-tag-list">
+                                {contextAnalysis.interesses_recorrentes.map((item, i) => (
+                                  <span key={i} className="ctx-tag">{item}</span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {contextAnalysis.riscos && contextAnalysis.riscos.length > 0 && (
+                          <div className="context-pattern-card">
+                            <div className="context-pattern-header" style={{ color: '#dc2626' }}>
+                              <AlertTriangle size={16} />
+                              <span>Riscos</span>
+                            </div>
+                            <div className="context-pattern-body">
+                              <ul className="ctx-risk-list">
+                                {contextAnalysis.riscos.map((item, i) => (
+                                  <li key={i}>{item}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        )}
+
+                        {contextAnalysis.oportunidades && (
+                          <div className="context-pattern-card">
+                            <div className="context-pattern-header" style={{ color: '#16a34a' }}>
+                              <TrendingUp size={16} />
+                              <span>Oportunidades</span>
+                            </div>
+                            <div className="context-pattern-body">
+                              <p className="ctx-opportunity-text">{contextAnalysis.oportunidades}</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <div className="context-analysis-resumo">
-                        {contextAnalysis.resumo || 'Resumo não disponível'}
-                      </div>
+
+                      {contextAnalysis.resumo && (
+                        <div className="context-analysis-resumo">
+                          {contextAnalysis.resumo}
+                        </div>
+                      )}
+
                       {contextAnalysis.resposta_sugerida && (
                         <div className="context-analysis-suggest">
                           <span className="context-analysis-label">Responder:</span>
