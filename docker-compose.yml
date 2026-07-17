@@ -15,6 +15,7 @@ services:
       DB_DATABASE: 'crm_serralheria'
       DB_SSL: 'false'
       N8N_WEBHOOK_URL: 'https://webhook.automacao.free.nf/webhook/4152c9b1-d554-4d39-918a-7b4a23a522f3'
+      N8N_ANALYZE_WEBHOOK_URL: 'https://webhook.automacao.free.nf/webhook/analyze-lead'
       EVOLUTION_API_KEY: '52397EAD055D-481F-8911-3F06BCC5D370'
       EVOLUTION_INSTANCE: 'celularteste'
       FRONTEND_URL: 'https://crm-serralheria.vercel.app'

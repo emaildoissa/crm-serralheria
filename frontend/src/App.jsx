@@ -223,6 +223,28 @@ function App() {
     }
   };
 
+  const analyzeLead = async (id) => {
+    setAnalyzing(true);
+    setLeadAnalysis(null);
+    try {
+      const res = await fetch(`${API_URL}/leads/${id}/analyze`, {
+        method: 'POST'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setLeadAnalysis(data);
+        fetchLeadDetail(id);
+      } else {
+        const err = await res.json();
+        setLeadAnalysis({ error: err.error || 'Erro ao analisar' });
+      }
+    } catch (err) {
+      console.error(err);
+      setLeadAnalysis({ error: 'Falha na requisição' });
+    }
+    setAnalyzing(false);
+  };
+
   const handleUpdateLead = async (e) => {
     e.preventDefault();
     try {
@@ -352,6 +374,8 @@ function App() {
   const [activeDragId, setActiveDragId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [taskText, setTaskText] = useState('');
+  const [analyzing, setAnalyzing] = useState(false);
+  const [leadAnalysis, setLeadAnalysis] = useState(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -1209,6 +1233,63 @@ function App() {
                       </div>
                       {expandedPanels.insights && (
                         <div className="accordion-body">
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>Dados de interação</span>
+                            <button className="btn btn-sm" onClick={() => analyzeLead(editForm.id)} disabled={analyzing}>
+                              {analyzing ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} />}
+                              {analyzing ? 'Analisando...' : 'Analisar Agora'}
+                            </button>
+                          </div>
+
+                          {leadAnalysis && !leadAnalysis.error && (
+                            <div className="lead-block lead-ia-block" style={{ padding: '14px', marginBottom: '12px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                                <Sparkles size={18} color="#829aff" />
+                                <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '0.9rem' }}>Análise da IA</span>
+                                <span style={{ marginLeft: 'auto', fontSize: '0.68rem', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>
+                                  {leadAnalysis.custo_centavos > 0 ? `~R$ ${leadAnalysis.custo_centavos.toFixed(4)}` : 'grátis'}
+                                </span>
+                              </div>
+                              <div className="ia-meta-row" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '8px', marginBottom: '10px' }}>
+                                <div className="ia-meta-item">
+                                  <span className="ia-meta-label">Sentimento</span>
+                                  <span style={{ fontWeight: 600, fontSize: '0.85rem', color: leadAnalysis.sentimento === 'frustrado' ? '#dc2626' : leadAnalysis.sentimento === 'emergencial' ? '#ea580c' : leadAnalysis.sentimento === 'interessado' ? '#16a34a' : leadAnalysis.sentimento === 'negociação' ? '#ca8a04' : 'var(--text-muted)' }}>
+                                    {leadAnalysis.sentimento || '—'}
+                                  </span>
+                                </div>
+                                <div className="ia-meta-item">
+                                  <span className="ia-meta-label">Objeções</span>
+                                  <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                                    {leadAnalysis.objecoes?.length > 0 ? leadAnalysis.objecoes.join(', ') : 'Nenhuma'}
+                                  </span>
+                                </div>
+                                <div className="ia-meta-item">
+                                  <span className="ia-meta-label">Ação Recomendada</span>
+                                  <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--primary-hover)' }}>
+                                    {leadAnalysis.acao_recomendada || '—'}
+                                  </span>
+                                </div>
+                              </div>
+                              <div style={{ fontSize: '0.83rem', lineHeight: '1.6', color: '#e7e5e4', background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: 'var(--radius-sm)', marginBottom: '8px', borderLeft: '3px solid #d97706' }}>
+                                {leadAnalysis.resumo || 'Resumo não disponível'}
+                              </div>
+                              {leadAnalysis.resposta_sugerida && (
+                                <div className="ia-suggestion-banner" style={{ margin: 0 }}>
+                                  <Sparkles size={14} color="#829aff" />
+                                  <span className="ia-suggestion-label">Responder:</span>
+                                  <span className="ia-suggestion-text">{leadAnalysis.resposta_sugerida}</span>
+                                  <button className="btn btn-sm" onClick={() => setReplyText(leadAnalysis.resposta_sugerida)}>Usar</button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {leadAnalysis?.error && (
+                            <p style={{ color: 'var(--temp-quente)', fontSize: '0.8rem', textAlign: 'center', padding: '8px' }}>
+                              {leadAnalysis.error}
+                            </p>
+                          )}
+
                           {leadInsights ? (
                             <div className="insights-grid">
                               <div className="insight-card"><div className="insight-icon" style={{ backgroundColor: 'rgba(6, 214, 160, 0.1)', color: '#06d6a0' }}>{leadInsights.lead_recorrente ? <CheckCircle size={20} /> : <User size={20} />}</div><div><div className="insight-label">Tipo de Lead</div><div className="insight-value">{leadInsights.lead_recorrente ? 'Recorrente' : 'Novo'}</div></div></div>

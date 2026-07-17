@@ -1,0 +1,117 @@
+{
+  "name": "SOS - Análise de Lead (Analyze)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "analyze-lead",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [3000, 400],
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "Webhook",
+      "webhookId": "a1b2c3d4-e5f6-7890-abcd-ef1234567891"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body || {};\nconst lead_id = body.lead_id;\nconst mensagens = body.mensagens || [];\n\nif (!lead_id) throw new Error('lead_id é obrigatório');\nif (mensagens.length === 0) throw new Error('Nenhuma mensagem para analisar');\n\nconst historico = mensagens.map(m =>\n  `[${m.remetente === 'cliente' ? 'Cliente' : m.remetente === 'vendedor' ? 'Vendedor' : 'IA'}] ${m.mensagem}`\n).join('\\n');\n\nreturn { json: { lead_id, historico, total_msgs: mensagens.length } };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3200, 400],
+      "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+      "name": "Validar Input"
+    },
+    {
+      "parameters": {
+        "jsCode": "const h = $json.historico;\n\nreturn {\n  json: {\n    prompt: `Você é um analista comercial especializado em serralheria (portões, grades, corrimãos, coberturas metálicas, estruturas de aço).\n\nAnalise o histórico de conversa abaixo com um cliente e extraia insights comerciais objetivos.\n\nRegras:\n- Seja direto e prático.\n- Se a conversa for curta (apenas saudação), sentimento deve ser \"indeciso\" e objecoes null.\n- NUNCA invente informações que não estão na conversa.\n\nHistórico da conversa:\n${h}\n\nResponda APENAS o JSON abaixo, sem markdown, sem codigo extra:\n{\n  \"sentimento\": \"interessado | indeciso | frustrado | emergencial | negociação\",\n  \"objecoes\": [\"preco\", \"prazo\", \"concorrencia\", \"qualidade\", \"transporte\", \"outro\"] | null,\n  \"acao_recomendada\": \"qual a melhor acao comercial agora (texto curto)\",\n  \"resumo\": \"2-3 frases do que foi tratado na conversa\",\n  \"resposta_sugerida\": \"frase pronta para o vendedor responder via WhatsApp personalizada para este lead\"\n}`\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [3400, 400],
+      "id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+      "name": "Montar Prompt"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "promptType": "define",
+        "text": "={{ $json.prompt }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [3600, 400],
+      "id": "d4e5f6a7-b8c9-0123-defa-234567890123",
+      "name": "IA Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "rhBTw9NRAltxhyDH",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.item.json;\nlet text = raw.output || raw.text || '';\nif (!text && raw.message) text = raw.message.content;\nif (!text) throw new Error('Resposta vazia da IA');\n\ntext = text.replace(/```json/g, '').replace(/```/g, '').trim();\n\nlet d;\ntry {\n  d = JSON.parse(text);\n} catch (e) {\n  d = { sentimento: 'indeciso', objecoes: null, acao_recomendada: 'Reanalisar conversa', resumo: 'Erro ao processar resposta da IA', resposta_sugerida: '' };\n}\n\nconst usage = $input.item.json?.usage || $json?.usage || {};\nconst tokens_input = usage.promptTokens || usage.input_tokens || 0;\nconst tokens_output = usage.completionTokens || usage.output_tokens || 0;\n\n// Gemini 2.5 Flash: ~$0.15/1M input, ~$0.60/1M output\nconst custo_centavos = ((tokens_input / 1000000) * 0.15 + (tokens_output / 1000000) * 0.60) * 100;\n\nreturn {\n  json: {\n    sentimento: d.sentimento || 'indeciso',\n    objecoes: d.objecoes || null,\n    acao_recomendada: d.acao_recomendada || 'Aguardando resposta do cliente',\n    resumo: d.resumo || 'Analise nao disponivel',\n    resposta_sugerida: d.resposta_sugerida || '',\n    tokens_input,\n    tokens_output,\n    custo_centavos: Math.round(custo_centavos * 100) / 100\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [3800, 400],
+      "id": "e5f6a7b8-c9d0-1234-efab-345678901234",
+      "name": "Parsear Resposta"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [4000, 400],
+      "id": "f6a7b8c9-d0e1-2345-fabc-456789012345",
+      "name": "Responder"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Validar Input", "type": "main", "index": 0 }]]
+    },
+    "Validar Input": {
+      "main": [[{ "node": "Montar Prompt", "type": "main", "index": 0 }]]
+    },
+    "Montar Prompt": {
+      "main": [[{ "node": "IA Gemini", "type": "main", "index": 0 }]]
+    },
+    "IA Gemini": {
+      "main": [[{ "node": "Parsear Resposta", "type": "main", "index": 0 }]]
+    },
+    "Parsear Resposta": {
+      "main": [[{ "node": "Responder", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "analyze-lead-v1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "190ab05e569beca3ddd243a48879f3a87c4d2147e196c24032e1cdfd29911be5"
+  },
+  "nodeGroups": [],
+  "tags": []
+}

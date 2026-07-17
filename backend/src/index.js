@@ -106,6 +106,11 @@ async function initDatabase() {
     // Migrações para tabelas existentes (adiciona colunas novas)
     await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS responsavel VARCHAR(255);');
     await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS resposta_sugerida TEXT;');
+    await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS sentimento VARCHAR(50);');
+    await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS objecoes TEXT;');
+    await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS acao_recomendada TEXT;');
+    await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS ultima_analise_data TIMESTAMP WITH TIME ZONE;');
+    await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS ultima_analise_custo DECIMAL(10,5);');
     console.log('Tabelas do banco de dados verificadas/criadas com sucesso!');
 
     // Inserir dados de teste se o banco estiver vazio

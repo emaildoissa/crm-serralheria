@@ -811,6 +811,10 @@ body::before {
   font-size: 0.9rem !important;
 }
 
+.lead-block.lead-ia-block .ia-meta-row {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
 .btn-send {
   border-radius: 50% !important;
   width: 40px;

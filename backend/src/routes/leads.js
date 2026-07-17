@@ -809,5 +809,96 @@ router.get('/:id/insights', async (req, res) => {
   }
 });
 
+// 16. ANALISAR LEAD COM IA (Chama n8n + salva resultado)
+router.post('/:id/analyze', async (req, res) => {
+  try {
+    const leadId = req.params.id;
+    const leadRes = await db.query('SELECT * FROM leads WHERE id = $1', [leadId]);
+    if (leadRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Lead não encontrado' });
+    }
+
+    const msgsRes = await db.query(
+      'SELECT remetente, mensagem, created_at FROM mensagens_chat WHERE lead_id = $1 ORDER BY created_at ASC',
+      [leadId]
+    );
+    const mensagens = msgsRes.rows;
+
+    if (mensagens.length === 0) {
+      return res.status(400).json({ error: 'Nenhuma mensagem para analisar' });
+    }
+
+    const n8nUrl = process.env.N8N_ANALYZE_WEBHOOK_URL;
+    if (!n8nUrl) {
+      return res.status(400).json({ error: 'N8N_ANALYZE_WEBHOOK_URL não configurado no .env' });
+    }
+
+    const payload = { lead_id: leadId, mensagens };
+    const bodyStr = JSON.stringify(payload);
+    const urlObj = new URL(n8nUrl);
+    const https = require('https');
+    const http = require('http');
+    const client = n8nUrl.startsWith('https') ? https : http;
+
+    const n8nRes = await new Promise((resolve, reject) => {
+      const req = client.request({
+        hostname: urlObj.hostname,
+        port: urlObj.port || (n8nUrl.startsWith('https') ? 443 : 80),
+        path: urlObj.pathname,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(bodyStr)
+        }
+      }, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => resolve({ status: res.statusCode, data }));
+      });
+      req.on('error', reject);
+      req.write(bodyStr);
+      req.end();
+    });
+
+    if (n8nRes.status !== 200) {
+      return res.status(502).json({ error: 'Erro ao chamar n8n', status: n8nRes.status });
+    }
+
+    let analysis;
+    try {
+      analysis = JSON.parse(n8nRes.data);
+    } catch {
+      return res.status(502).json({ error: 'Resposta inválida do n8n', raw: n8nRes.data });
+    }
+
+    await db.query(
+      `UPDATE leads SET 
+        sentimento = $1,
+        objecoes = $2,
+        acao_recomendada = $3,
+        resumo_ia = $4,
+        resposta_sugerida = $5,
+        ultima_analise_data = CURRENT_TIMESTAMP,
+        ultima_analise_custo = $6,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $7`,
+      [
+        analysis.sentimento || null,
+        analysis.objecoes ? JSON.stringify(analysis.objecoes) : null,
+        analysis.acao_recomendada || null,
+        analysis.resumo || null,
+        analysis.resposta_sugerida || null,
+        analysis.custo_centavos || 0,
+        leadId
+      ]
+    );
+
+    res.json(analysis);
+  } catch (error) {
+    console.error('Erro ao analisar lead:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
 module.exports = router;
 
