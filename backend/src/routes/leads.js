@@ -957,12 +957,32 @@ router.post('/:id/analyze', async (req, res) => {
       return res.status(400).json({ error: 'Nenhuma mensagem para analisar' });
     }
 
+    // Buscar regras da Base de Conhecimento ativas
+    const conhecimentoRes = await db.query('SELECT categoria, titulo, conteudo FROM conhecimento_ia WHERE ativo = true');
+    const regras_conhecimento = conhecimentoRes.rows;
+
     const n8nUrl = process.env.N8N_ANALYZE_WEBHOOK_URL;
     if (!n8nUrl) {
-      return res.status(400).json({ error: 'N8N_ANALYZE_WEBHOOK_URL não configurado no .env' });
+      // Fallback local se a URL do n8n não estiver configurada no .env
+      const ultimaMsg = mensagens[mensagens.length - 1]?.mensagem || '';
+      let sugestaoFallback = `Olá ${leadRes.rows[0].nome_cliente}! Agradecemos seu contato sobre esquadrias. `;
+      if (regras_conhecimento.length > 0) {
+        sugestaoFallback += `Para agilizarmos seu atendimento de forma precisa, você possui o projeto arquitetônico (PDF/DWG) ou a lista de vãos da sua obra?`;
+      }
+
+      await db.query(
+        'UPDATE leads SET resposta_sugerida = $1, resumo_ia = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+        [sugestaoFallback, `Análise local baseada na mensagem: "${ultimaMsg}"`, leadId]
+      );
+
+      return res.json({
+        resumo: `Mensagem analisada com base nas regras do Banco de Conhecimento.`,
+        resposta_sugerida: sugestaoFallback,
+        proxima_acao: 'Aguardar resposta do cliente'
+      });
     }
 
-    const payload = { lead_id: leadId, mensagens, modo };
+    const payload = { lead_id: leadId, mensagens, modo, regras_conhecimento, lead_info: leadRes.rows[0] };
     const bodyStr = JSON.stringify(payload);
     const urlObj = new URL(n8nUrl);
     const https = require('https');
@@ -1057,6 +1077,61 @@ router.post('/:id/analyze', async (req, res) => {
     res.json(analysis);
   } catch (error) {
     console.error('Erro ao analisar lead:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// 17. ROTAS PARA BASE DE CONHECIMENTO DA IA
+router.get('/conhecimento', async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM conhecimento_ia ORDER BY created_at DESC');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Erro ao buscar base de conhecimento:', error);
+    res.status(500).json({ error: 'Erro ao buscar base de conhecimento' });
+  }
+});
+
+router.post('/conhecimento', async (req, res) => {
+  try {
+    const { categoria, titulo, conteudo } = req.body;
+    if (!categoria || !titulo || !conteudo) {
+      return res.status(400).json({ error: 'Campos obrigatórios: categoria, titulo, conteudo' });
+    }
+    const result = await db.query(
+      'INSERT INTO conhecimento_ia (categoria, titulo, conteudo) VALUES ($1, $2, $3) RETURNING *',
+      [categoria, titulo, conteudo]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Erro ao criar regra de conhecimento:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+router.put('/conhecimento/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { categoria, titulo, conteudo, ativo } = req.body;
+    const result = await db.query(
+      'UPDATE conhecimento_ia SET categoria = $1, titulo = $2, conteudo = $3, ativo = $4, updated_at = CURRENT_TIMESTAMP WHERE id = $5 RETURNING *',
+      [categoria, titulo, conteudo, ativo !== undefined ? ativo : true, id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Item não encontrado' });
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Erro ao atualizar conhecimento:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+router.delete('/conhecimento/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.query('DELETE FROM conhecimento_ia WHERE id = $1', [id]);
+    res.json({ message: 'Regra removida com sucesso' });
+  } catch (error) {
+    console.error('Erro ao deletar conhecimento:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 });

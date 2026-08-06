@@ -124,6 +124,14 @@ function App() {
   const [editMode, setEditMode] = useState(false);
   const [expandedPanels, setExpandedPanels] = useState({ conversa: false, timeline: false, insights: true, qualificacao: true });
 
+  // Estados da Base de Conhecimento da IA
+  const [conhecimentoList, setConhecimentoList] = useState([]);
+  const [newConhecimentoForm, setNewConhecimentoForm] = useState({
+    categoria: 'qualificacao',
+    titulo: '',
+    conteudo: ''
+  });
+
   const togglePanel = (panel) => {
     setExpandedPanels(prev => ({ ...prev, [panel]: !prev[panel] }));
   };
@@ -132,7 +140,50 @@ function App() {
   useEffect(() => {
     fetchLeads();
     fetchDashboardData();
+    fetchConhecimento();
   }, []);
+
+  const fetchConhecimento = async () => {
+    try {
+      const res = await fetch(`${API_URL}/conhecimento`);
+      if (res.ok) {
+        const data = await res.json();
+        setConhecimentoList(data);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar conhecimento:', err);
+    }
+  };
+
+  const handleCreateConhecimento = async (e) => {
+    e.preventDefault();
+    if (!newConhecimentoForm.titulo || !newConhecimentoForm.conteudo) return;
+    try {
+      const res = await fetch(`${API_URL}/conhecimento`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newConhecimentoForm)
+      });
+      if (res.ok) {
+        setNewConhecimentoForm({ categoria: 'qualificacao', titulo: '', conteudo: '' });
+        fetchConhecimento();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteConhecimento = async (id) => {
+    if (!window.confirm('Tem certeza que deseja excluir esta regra da Base de Conhecimento?')) return;
+    try {
+      const res = await fetch(`${API_URL}/conhecimento/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchConhecimento();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   // Recarregar dados do lead selecionado para atualizar as abas secundárias
   useEffect(() => {
@@ -602,6 +653,15 @@ function App() {
               IA Contextual
             </a>
           </li>
+          <li>
+            <a 
+              className={`sidebar-menu-item ${currentTab === 'conhecimento' ? 'active' : ''}`}
+              onClick={() => { setCurrentTab('conhecimento'); fetchConhecimento(); setSidebarOpen(false); }}
+            >
+              <FileEdit size={20} />
+              Base de Conhecimento IA
+            </a>
+          </li>
         </ul>
         <div className="sidebar-action">
           <button className="sidebar-create-btn" onClick={() => { setIsCreateModalOpen(true); setSidebarOpen(false); }}>
@@ -631,6 +691,7 @@ function App() {
                   {currentTab === 'agenda' && 'Controle de Visitas, Medição e Instalação'}
                   {currentTab === 'producao' && 'Status de Produção e Fábrica'}
                   {currentTab === 'ia-contextual' && 'IA Contextual — Análise de Conversas'}
+                  {currentTab === 'conhecimento' && 'Base de Conhecimento & Regras de Atendimento da IA'}
                 </span>
                 <span className="show-mobile">
                   {currentTab === 'dashboard' && 'Dashboard'}
@@ -638,6 +699,7 @@ function App() {
                   {currentTab === 'agenda' && 'Agenda'}
                   {currentTab === 'producao' && 'Produção'}
                   {currentTab === 'ia-contextual' && 'IA'}
+                  {currentTab === 'conhecimento' && 'Regras IA'}
                 </span>
               </h1>
             </div>
@@ -1117,6 +1179,121 @@ function App() {
                   <p>Selecione uma conversa ao lado para analisar o contexto e responder com ajuda da IA.</p>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* -------------------- TAB: BASE DE CONHECIMENTO IA -------------------- */}
+        {currentTab === 'conhecimento' && (
+          <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
+              {/* Form de Nova Regra */}
+              <div className="glass-container" style={{ padding: '20px', borderRadius: '12px' }}>
+                <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary)' }}>
+                  <Plus size={18} /> Adicionar Regra à IA
+                </h3>
+                <form onSubmit={handleCreateConhecimento} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div className="form-group">
+                    <label className="form-label">Categoria</label>
+                    <select
+                      className="form-control"
+                      value={newConhecimentoForm.categoria}
+                      onChange={e => setNewConhecimentoForm({ ...newConhecimentoForm, categoria: e.target.value })}
+                    >
+                      <option value="qualificacao">Qualificação e Triagem</option>
+                      <option value="materiais">Materiais (Alumínio / PVC / Madeira)</option>
+                      <option value="avisos_legais">Termos e Avisos de Medição</option>
+                      <option value="politicas">Políticas, Prazos e Garantia</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Título da Instrução</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Ex: Triagem de Vãos Requadrados"
+                      value={newConhecimentoForm.titulo}
+                      onChange={e => setNewConhecimentoForm({ ...newConhecimentoForm, titulo: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Conteúdo / Diretriz para a IA</label>
+                    <textarea
+                      className="form-control"
+                      rows={5}
+                      placeholder="Descreva exatamente como a IA deve orientar o cliente..."
+                      value={newConhecimentoForm.conteudo}
+                      onChange={e => setNewConhecimentoForm({ ...newConhecimentoForm, conteudo: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <button type="submit" className="btn btn-primary" style={{ marginTop: '8px' }}>
+                    <Plus size={16} /> Salvar no Banco de Conhecimento
+                  </button>
+                </form>
+              </div>
+
+              {/* Lista de Regras */}
+              <div className="glass-container" style={{ padding: '20px', borderRadius: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <h3 style={{ fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Sparkles size={18} color="#4361ee" /> Diretrizes Ativas da IA ({conhecimentoList.length})
+                  </h3>
+                  <button className="btn btn-sm btn-secondary" onClick={fetchConhecimento}>
+                    <RefreshCw size={14} /> Atualizar
+                  </button>
+                </div>
+
+                {conhecimentoList.length === 0 ? (
+                  <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '32px 0' }}>
+                    Nenhuma regra cadastrada na Base de Conhecimento.
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {conhecimentoList.map(item => (
+                      <div
+                        key={item.id}
+                        style={{
+                          padding: '14px 16px',
+                          borderRadius: '8px',
+                          background: 'rgba(255, 255, 255, 0.03)',
+                          border: '1px solid var(--border-color)',
+                          position: 'relative'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span
+                              className="tag"
+                              style={{
+                                fontSize: '0.7rem',
+                                textTransform: 'uppercase',
+                                background: item.categoria === 'qualificacao' ? 'rgba(67,97,238,0.2)' : item.categoria === 'materiais' ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)',
+                                color: item.categoria === 'qualificacao' ? '#4361ee' : item.categoria === 'materiais' ? '#10b981' : '#f59e0b'
+                              }}
+                            >
+                              {item.categoria}
+                            </span>
+                            <strong style={{ fontSize: '0.95rem' }}>{item.titulo}</strong>
+                          </div>
+                          <button
+                            className="btn-icon"
+                            style={{ color: '#ef4444', padding: '2px' }}
+                            title="Excluir Regra"
+                            onClick={() => handleDeleteConhecimento(item.id)}
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, lineHeight: '1.4' }}>
+                          {item.conteudo}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -1646,11 +1823,16 @@ function App() {
                           </div>
 
                           <div className="chat-quick-actions">
-                            <button className="chat-quick-action" onClick={() => setReplyText(`Olá ${editForm.nome_cliente}! Recebemos sua solicitação de ${editForm.tipo_servico || 'esquadrias'}.`)}><MessageSquare size={14} /> Responder</button>
-                            <button className="chat-quick-action" onClick={() => setReplyText(`Olá ${editForm.nome_cliente}! Para um orçamento prévio preciso, você possui o projeto arquitetônico em PDF/DWG? *Aviso:* Orçamentos com medidas do cliente são estimativos até a medição in loco.`)}><FileEdit size={14} /> Script 1: Projeto PDF</button>
-                            <button className="chat-quick-action" onClick={() => setReplyText(`Olá ${editForm.nome_cliente}! Para agendarmos a medição técnica, os vãos da sua obra já estão requadrados/rebocados e com a soleira/nível do piso definido?`)}><Ruler size={14} /> Script 2: Visita / Vãos</button>
-                            <button className="chat-quick-action" onClick={() => setReplyText(`Olá ${editForm.nome_cliente}! Trabalhamos com Alumínio (Linha Gold/Suprema), PVC Termoacústico e Madeira de Alto Padrão (Certificada FSC). Qual linha atende melhor seu projeto?`)}><Sparkles size={14} /> Script 3: Materiais</button>
-                            <button className="chat-quick-action" onClick={() => { window.open(`https://wa.me/${(editForm.whatsapp || '').replace(/\D/g, '')}`, '_blank'); }}><User size={14} /> WhatsApp</button>
+                            <button className="chat-quick-action" onClick={() => analyzeLead(editForm.id)} disabled={analyzing}>
+                              {analyzing ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} color="#4361ee" />}
+                              <span>{analyzing ? 'Analisando...' : 'Pedir Sugestão à IA'}</span>
+                            </button>
+                            <button className="chat-quick-action" onClick={() => setReplyText(`Olá ${editForm.nome_cliente}! `)}>
+                              <MessageSquare size={14} /> Responder
+                            </button>
+                            <button className="chat-quick-action" onClick={() => { window.open(`https://wa.me/${(editForm.whatsapp || '').replace(/\D/g, '')}`, '_blank'); }}>
+                              <User size={14} /> WhatsApp
+                            </button>
                           </div>
 
                           <div className="chat-inline-controls">
@@ -1674,12 +1856,35 @@ function App() {
                             </div>
                           </div>
 
-                          {editForm.resposta_sugerida && (
-                            <div className="ia-suggestion-banner">
-                              <Sparkles size={14} color="#829aff" />
-                              <span className="ia-suggestion-label">Resposta Sugerida pela IA:</span>
-                              <span className="ia-suggestion-text">{editForm.resposta_sugerida}</span>
-                              <button className="btn btn-sm" onClick={() => setReplyText(editForm.resposta_sugerida)}>Usar</button>
+                          {editForm.resposta_sugerida ? (
+                            <div className="ia-suggestion-banner" style={{ background: 'rgba(67, 97, 238, 0.08)', border: '1px solid rgba(67, 97, 238, 0.25)', borderRadius: '10px', padding: '14px', marginBottom: '12px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <Sparkles size={16} color="#4361ee" />
+                                  <strong style={{ fontSize: '0.88rem', color: '#4361ee' }}>Resposta Sugerida pela IA (Base de Conhecimento)</strong>
+                                </div>
+                                <button className="btn btn-sm btn-secondary" style={{ fontSize: '0.75rem', padding: '3px 8px' }} onClick={() => analyzeLead(editForm.id)} disabled={analyzing}>
+                                  {analyzing ? <Loader2 size={12} className="spin" /> : <RefreshCw size={12} />} Regerar
+                                </button>
+                              </div>
+                              <p className="ia-suggestion-text" style={{ fontSize: '0.88rem', lineHeight: '1.4', margin: '8px 0', color: 'var(--text-main)' }}>
+                                {editForm.resposta_sugerida}
+                              </p>
+                              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                                <button className="btn btn-sm btn-primary" onClick={() => setReplyText(editForm.resposta_sugerida)}>
+                                  <Send size={12} style={{ marginRight: '6px' }} /> Usar no Chat (1-Clique)
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255, 255, 255, 0.02)', border: '1px dashed var(--border-color)', borderRadius: '10px', padding: '12px', marginBottom: '12px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                <Sparkles size={16} color="#829aff" />
+                                <span>Solicite à IA uma sugestão contextual de resposta baseada na Base de Conhecimento.</span>
+                              </div>
+                              <button className="btn btn-sm btn-secondary" onClick={() => analyzeLead(editForm.id)} disabled={analyzing}>
+                                {analyzing ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} />} {analyzing ? 'Gerando...' : 'Gerar Resposta'}
+                              </button>
                             </div>
                           )}
                           <div className="chat-input-bar">

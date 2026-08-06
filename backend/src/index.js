@@ -97,6 +97,16 @@ async function initDatabase() {
       responsavel VARCHAR(255),
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS conhecimento_ia (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      categoria VARCHAR(100) NOT NULL,
+      titulo VARCHAR(255) NOT NULL,
+      conteudo TEXT NOT NULL,
+      ativo BOOLEAN DEFAULT TRUE,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
   `;
 
   try {
@@ -135,6 +145,20 @@ async function initDatabase() {
     await db.query('ALTER TABLE servicos ADD COLUMN IF NOT EXISTS certificacao_fsc BOOLEAN DEFAULT FALSE;');
     await db.query('ALTER TABLE servicos ADD COLUMN IF NOT EXISTS persiana_integrada VARCHAR(50);');
     await db.query('ALTER TABLE servicos ADD COLUMN IF NOT EXISTS usa_contramarco BOOLEAN DEFAULT TRUE;');
+
+    // Popular conhecimento_ia inicial se estiver vazio
+    const checkConhecimento = await db.query('SELECT COUNT(*) FROM conhecimento_ia');
+    if (parseInt(checkConhecimento.rows[0].count) === 0) {
+      console.log('Inserindo itens padrão no Banco de Conhecimento da IA...');
+      await db.query(`
+        INSERT INTO conhecimento_ia (categoria, titulo, conteudo) VALUES
+        ('qualificacao', 'Triagem de Vãos e Nível de Piso', 'Ao agendar medição presencial, instrua o cliente sobre a necessidade dos vãos estarem requadrados/rebocados e o nível do piso ou soleira já definido para evitar erro de fabricação.'),
+        ('qualificacao', 'Solicitação de Desenhos PDF/DWG', 'Se o cliente solicitar orçamento rápido via WhatsApp, peça delicadamente o projeto arquitetônico em PDF ou DWG com a tabela de esquadrias.'),
+        ('avisos_legais', 'Aviso de Responsabilidade de Medidas', 'Lembre o cliente que orçamentos gerados a partir de medidas enviadas por ele são estimativos e prévios. A produção oficial exige medição presencial do nosso técnico.'),
+        ('materiais', 'Guia Comparativo: Alumínio vs PVC vs Madeira', 'Alumínio (Suprema/Gold) é ideal para grande durabilidade e custo-benefício; PVC se destaca por excelente isolamento acústico e térmico; Madeira exige certificação sustentável (FSC/DOF) para alto padrão estético.'),
+        ('politicas', 'Prazos de Entrega e Garantia', 'O prazo médio de fabricação é de 25 a 35 dias úteis após a aprovação da medição fina. Garantia de 5 anos para perfis e estrutura e 1 ano para roldanas e vedações.');
+      `);
+    }
 
     console.log('Tabelas do banco de dados verificadas/criadas com sucesso!');
 
