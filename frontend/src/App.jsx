@@ -38,6 +38,7 @@ import {
   Siren,
   Handshake
 } from 'lucide-react';
+import { OrcamentoSection } from './components/orcamentos/OrcamentoSection';
 
 const API_URL = import.meta.env.DEV ? 'http://localhost:5000/api' : (import.meta.env.VITE_API_URL || '/api');
 
@@ -1854,6 +1855,16 @@ function App() {
                       <button type="button" className="btn btn-primary" onClick={handleUpdateLead}>Salvar Qualificação & Dados Técnicos</button>
                     </div>
                   </div>
+
+                  {/* -------------------- SEÇÃO DE ORÇAMENTOS & PDF -------------------- */}
+                  <OrcamentoSection
+                    lead={leadDetail}
+                    onOrcamentoCriado={() => {
+                      fetchLeadDetail(selectedLeadId);
+                      fetchLeads();
+                      fetchDashboardData();
+                    }}
+                  />
 
                   <div className="glass-container" style={{ padding: '20px', marginBottom: '20px' }}>
                     <h3 style={{ marginBottom: '16px' }}><Calendar size={18} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Agendar Visita</h3>

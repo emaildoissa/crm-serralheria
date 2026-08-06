@@ -107,6 +107,38 @@ async function initDatabase() {
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS orcamentos (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      lead_id UUID REFERENCES leads(id) ON DELETE CASCADE,
+      numero SERIAL,
+      titulo VARCHAR(255) DEFAULT 'Orçamento de Esquadrias',
+      status VARCHAR(50) DEFAULT 'Rascunho',
+      validade DATE,
+      desconto DECIMAL(10,2) DEFAULT 0,
+      acrescimo DECIMAL(10,2) DEFAULT 0,
+      total DECIMAL(10,2) DEFAULT 0,
+      condicoes_pagamento TEXT,
+      prazo_entrega VARCHAR(100),
+      observacoes TEXT,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS orcamento_itens (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      orcamento_id UUID REFERENCES orcamentos(id) ON DELETE CASCADE,
+      descricao TEXT NOT NULL,
+      quantidade DECIMAL(10,3) DEFAULT 1,
+      unidade VARCHAR(20) DEFAULT 'un',
+      largura DECIMAL(10,3),
+      altura DECIMAL(10,3),
+      preco_unitario DECIMAL(10,2) DEFAULT 0,
+      subtotal DECIMAL(10,2) DEFAULT 0,
+      imagem_url TEXT,
+      ordem INT DEFAULT 0,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
   `;
 
   try {
@@ -239,9 +271,11 @@ initDatabase();
 // Importar rotas
 const leadsRoutes = require('./routes/leads');
 const dashboardRoutes = require('./routes/dashboard');
+const orcamentosRoutes = require('./routes/orcamentos');
 
 app.use('/api/leads', leadsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/orcamentos', orcamentosRoutes);
 
 // Endpoint de Teste/Healthcheck
 app.use('/api/health', (req, res) => {
