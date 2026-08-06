@@ -118,6 +118,24 @@ async function initDatabase() {
     await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS oportunidades TEXT;');
     await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS tempo_decisao VARCHAR(100);');
     await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS sentimento_geral VARCHAR(50);');
+    // Novas colunas do Guia de Qualificação Multimaterial
+    await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS localizacao_obra VARCHAR(255);');
+    await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS numero_pavimentos VARCHAR(50);');
+    await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS fase_obra VARCHAR(100);');
+    await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS vaos_requadrados BOOLEAN DEFAULT FALSE;');
+    await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS nivel_piso_definido BOOLEAN DEFAULT FALSE;');
+    await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS origem_medidas VARCHAR(100);');
+    await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS aviso_responsabilidade_aceito BOOLEAN DEFAULT FALSE;');
+    await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS estrategia_linha VARCHAR(100);');
+
+    // Novas colunas em Serviços
+    await db.query('ALTER TABLE servicos ADD COLUMN IF NOT EXISTS tipologia VARCHAR(100);');
+    await db.query('ALTER TABLE servicos ADD COLUMN IF NOT EXISTS tipo_vidro VARCHAR(100);');
+    await db.query('ALTER TABLE servicos ADD COLUMN IF NOT EXISTS classificacao_madeira VARCHAR(50);');
+    await db.query('ALTER TABLE servicos ADD COLUMN IF NOT EXISTS certificacao_fsc BOOLEAN DEFAULT FALSE;');
+    await db.query('ALTER TABLE servicos ADD COLUMN IF NOT EXISTS persiana_integrada VARCHAR(50);');
+    await db.query('ALTER TABLE servicos ADD COLUMN IF NOT EXISTS usa_contramarco BOOLEAN DEFAULT TRUE;');
+
     console.log('Tabelas do banco de dados verificadas/criadas com sucesso!');
 
     // Inserir dados de teste se o banco estiver vazio

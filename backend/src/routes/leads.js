@@ -6,7 +6,8 @@ const db = require('../config/db');
 router.get('/', async (req, res) => {
   try {
     const queryText = `
-      SELECT l.*, s.tipo_servico, s.material, s.medidas_brutas, s.medidas_tecnicas, s.cor_acabamento, s.necessita_instalacao, s.checklist_ia
+      SELECT l.*, s.tipo_servico, s.material, s.medidas_brutas, s.medidas_tecnicas, s.cor_acabamento, s.necessita_instalacao, s.checklist_ia,
+             s.tipologia, s.tipo_vidro, s.classificacao_madeira, s.certificacao_fsc, s.persiana_integrada, s.usa_contramarco
       FROM leads l
       LEFT JOIN servicos s ON l.id = s.lead_id
       ORDER BY l.updated_at DESC
@@ -36,7 +37,22 @@ router.post('/', async (req, res) => {
       material,
       medidas_brutas,
       cor_acabamento,
-      necessita_instalacao
+      necessita_instalacao,
+      // Campos de qualificação
+      localizacao_obra,
+      numero_pavimentos,
+      fase_obra,
+      vaos_requadrados,
+      nivel_piso_definido,
+      origem_medidas,
+      aviso_responsabilidade_aceito,
+      estrategia_linha,
+      tipologia,
+      tipo_vidro,
+      classificacao_madeira,
+      certificacao_fsc,
+      persiana_integrada,
+      usa_contramarco
     } = req.body;
 
     await client.query('BEGIN');
@@ -45,9 +61,11 @@ router.post('/', async (req, res) => {
     const insertLeadQuery = `
       INSERT INTO leads (
         nome_cliente, whatsapp, origem, status_funil, endereco_obra, 
-        prazo_desejado, complexidade, valor_estimado, temperatura_lead
+        prazo_desejado, complexidade, valor_estimado, temperatura_lead,
+        localizacao_obra, numero_pavimentos, fase_obra, vaos_requadrados,
+        nivel_piso_definido, origem_medidas, aviso_responsabilidade_aceito, estrategia_linha
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       RETURNING *
     `;
     const leadRes = await client.query(insertLeadQuery, [
@@ -59,7 +77,15 @@ router.post('/', async (req, res) => {
       prazo_desejado || null,
       complexidade || 'Média',
       valor_estimado || 0,
-      'Morno'
+      'Morno',
+      localizacao_obra || null,
+      numero_pavimentos || null,
+      fase_obra || null,
+      vaos_requadrados || false,
+      nivel_piso_definido || false,
+      origem_medidas || null,
+      aviso_responsabilidade_aceito || false,
+      estrategia_linha || null
     ]);
 
     const newLead = leadRes.rows[0];
@@ -67,18 +93,25 @@ router.post('/', async (req, res) => {
     // Inserir serviço correspondente
     const insertServiceQuery = `
       INSERT INTO servicos (
-        lead_id, tipo_servico, material, medidas_brutas, cor_acabamento, necessita_instalacao
+        lead_id, tipo_servico, material, medidas_brutas, cor_acabamento, necessita_instalacao,
+        tipologia, tipo_vidro, classificacao_madeira, certificacao_fsc, persiana_integrada, usa_contramarco
       )
-      VALUES ($1, $2, $3, $4, $5, $6)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
     `;
     const serviceRes = await client.query(insertServiceQuery, [
       newLead.id,
-      tipo_servico || 'Portão',
-      material || 'Alumínio',
+      tipo_servico || 'Janela (Alumínio / PVC / Madeira)',
+      material || 'Alumínio (Linha Suprema)',
       medidas_brutas || '',
       cor_acabamento || 'Preto',
-      necessita_instalacao !== undefined ? necessita_instalacao : true
+      necessita_instalacao !== undefined ? necessita_instalacao : true,
+      tipologia || null,
+      tipo_vidro || null,
+      classificacao_madeira || null,
+      certificacao_fsc || false,
+      persiana_integrada || null,
+      usa_contramarco !== undefined ? usa_contramarco : true
     ]);
 
     await client.query(
@@ -109,7 +142,8 @@ router.get('/:id', async (req, res) => {
 
     // Buscar dados do lead e do serviço
     const leadQuery = `
-      SELECT l.*, s.tipo_servico, s.material, s.medidas_brutas, s.medidas_tecnicas, s.cor_acabamento, s.necessita_instalacao, s.checklist_ia
+      SELECT l.*, s.tipo_servico, s.material, s.medidas_brutas, s.medidas_tecnicas, s.cor_acabamento, s.necessita_instalacao, s.checklist_ia,
+             s.tipologia, s.tipo_vidro, s.classificacao_madeira, s.certificacao_fsc, s.persiana_integrada, s.usa_contramarco
       FROM leads l
       LEFT JOIN servicos s ON l.id = s.lead_id
       WHERE l.id = $1
@@ -202,6 +236,15 @@ router.put('/:id', async (req, res) => {
       proxima_acao,
       temperatura_lead,
       motivo_perda,
+      // Novos campos de qualificação
+      localizacao_obra,
+      numero_pavimentos,
+      fase_obra,
+      vaos_requadrados,
+      nivel_piso_definido,
+      origem_medidas,
+      aviso_responsabilidade_aceito,
+      estrategia_linha,
       // Dados do serviço
       tipo_servico,
       material,
@@ -209,7 +252,13 @@ router.put('/:id', async (req, res) => {
       medidas_tecnicas,
       cor_acabamento,
       necessita_instalacao,
-      checklist_ia
+      checklist_ia,
+      tipologia,
+      tipo_vidro,
+      classificacao_madeira,
+      certificacao_fsc,
+      persiana_integrada,
+      usa_contramarco
     } = req.body;
 
     await client.query('BEGIN');
@@ -221,8 +270,11 @@ router.put('/:id', async (req, res) => {
           endereco_obra = $5, prazo_desejado = $6, complexidade = $7,
           valor_estimado = $8, valor_fechado = $9, resumo_ia = $10,
           proxima_acao = $11, temperatura_lead = $12, motivo_perda = $13,
+          localizacao_obra = $14, numero_pavimentos = $15, fase_obra = $16,
+          vaos_requadrados = $17, nivel_piso_definido = $18, origem_medidas = $19,
+          aviso_responsabilidade_aceito = $20, estrategia_linha = $21,
           updated_at = CURRENT_TIMESTAMP
-      WHERE id = $14
+      WHERE id = $22
       RETURNING *
     `;
     const leadRes = await client.query(updateLeadQuery, [
@@ -230,6 +282,9 @@ router.put('/:id', async (req, res) => {
       endereco_obra, prazo_desejado || null, complexidade,
       valor_estimado || 0, valor_fechado || 0, resumo_ia,
       proxima_acao, temperatura_lead, motivo_perda,
+      localizacao_obra || null, numero_pavimentos || null, fase_obra || null,
+      vaos_requadrados || false, nivel_piso_definido || false, origem_medidas || null,
+      aviso_responsabilidade_aceito || false, estrategia_linha || null,
       leadId
     ]);
 
@@ -248,8 +303,10 @@ router.put('/:id', async (req, res) => {
         UPDATE servicos
         SET tipo_servico = $1, material = $2, medidas_brutas = $3,
             medidas_tecnicas = $4, cor_acabamento = $5, necessita_instalacao = $6,
-            checklist_ia = $7
-        WHERE lead_id = $8
+            checklist_ia = $7, tipologia = $8, tipo_vidro = $9,
+            classificacao_madeira = $10, certificacao_fsc = $11,
+            persiana_integrada = $12, usa_contramarco = $13
+        WHERE lead_id = $14
         RETURNING *
       `;
       serviceRes = await client.query(updateServiceQuery, [
@@ -257,21 +314,29 @@ router.put('/:id', async (req, res) => {
         medidas_tecnicas ? JSON.stringify(medidas_tecnicas) : null,
         cor_acabamento, necessita_instalacao,
         checklist_ia ? JSON.stringify(checklist_ia) : null,
+        tipologia || null, tipo_vidro || null,
+        classificacao_madeira || null, certificacao_fsc || false,
+        persiana_integrada || null, usa_contramarco !== undefined ? usa_contramarco : true,
         leadId
       ]);
     } else {
       const insertServiceQuery = `
         INSERT INTO servicos (
-          lead_id, tipo_servico, material, medidas_brutas, medidas_tecnicas, cor_acabamento, necessita_instalacao, checklist_ia
+          lead_id, tipo_servico, material, medidas_brutas, medidas_tecnicas, cor_acabamento,
+          necessita_instalacao, checklist_ia, tipologia, tipo_vidro, classificacao_madeira,
+          certificacao_fsc, persiana_integrada, usa_contramarco
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         RETURNING *
       `;
       serviceRes = await client.query(insertServiceQuery, [
         leadId, tipo_servico, material, medidas_brutas,
         medidas_tecnicas ? JSON.stringify(medidas_tecnicas) : null,
         cor_acabamento, necessita_instalacao,
-        checklist_ia ? JSON.stringify(checklist_ia) : null
+        checklist_ia ? JSON.stringify(checklist_ia) : null,
+        tipologia || null, tipo_vidro || null,
+        classificacao_madeira || null, certificacao_fsc || false,
+        persiana_integrada || null, usa_contramarco !== undefined ? usa_contramarco : true
       ]);
     }
 
@@ -448,7 +513,22 @@ router.post('/webhook-ingest', async (req, res) => {
       temperatura_lead,
       proxima_acao,
       resposta_sugerida,
-      checklist_ia
+      checklist_ia,
+      // Novos campos de qualificação
+      localizacao_obra,
+      numero_pavimentos,
+      fase_obra,
+      vaos_requadrados,
+      nivel_piso_definido,
+      origem_medidas,
+      aviso_responsabilidade_aceito,
+      estrategia_linha,
+      tipologia,
+      tipo_vidro,
+      classificacao_madeira,
+      certificacao_fsc,
+      persiana_integrada,
+      usa_contramarco
     } = req.body;
 
     if (!whatsapp) {
@@ -487,8 +567,16 @@ router.post('/webhook-ingest', async (req, res) => {
             proxima_acao = COALESCE($3, proxima_acao),
             temperatura_lead = COALESCE($4, temperatura_lead),
             resposta_sugerida = COALESCE($5, resposta_sugerida),
+            localizacao_obra = COALESCE($6, localizacao_obra),
+            numero_pavimentos = COALESCE($7, numero_pavimentos),
+            fase_obra = COALESCE($8, fase_obra),
+            vaos_requadrados = COALESCE($9, vaos_requadrados),
+            nivel_piso_definido = COALESCE($10, nivel_piso_definido),
+            origem_medidas = COALESCE($11, origem_medidas),
+            aviso_responsabilidade_aceito = COALESCE($12, aviso_responsabilidade_aceito),
+            estrategia_linha = COALESCE($13, estrategia_linha),
             updated_at = CURRENT_TIMESTAMP
-        WHERE id = $6
+        WHERE id = $14
         RETURNING *
       `;
       const leadRes = await client.query(updateLeadQuery, [
@@ -497,6 +585,14 @@ router.post('/webhook-ingest', async (req, res) => {
         proxima_acao,
         temperatura_lead || 'Morno',
         resposta_sugerida,
+        localizacao_obra,
+        numero_pavimentos,
+        fase_obra,
+        vaos_requadrados,
+        nivel_piso_definido,
+        origem_medidas,
+        aviso_responsabilidade_aceito,
+        estrategia_linha,
         leadId
       ]);
       resultLead = leadRes.rows[0];
@@ -508,8 +604,14 @@ router.post('/webhook-ingest', async (req, res) => {
             medidas_brutas = COALESCE($3, medidas_brutas),
             medidas_tecnicas = COALESCE($4, medidas_tecnicas),
             cor_acabamento = COALESCE($5, cor_acabamento),
-            checklist_ia = COALESCE($6, checklist_ia)
-        WHERE lead_id = $7
+            checklist_ia = COALESCE($6, checklist_ia),
+            tipologia = COALESCE($7, tipologia),
+            tipo_vidro = COALESCE($8, tipo_vidro),
+            classificacao_madeira = COALESCE($9, classificacao_madeira),
+            certificacao_fsc = COALESCE($10, certificacao_fsc),
+            persiana_integrada = COALESCE($11, persiana_integrada),
+            usa_contramarco = COALESCE($12, usa_contramarco)
+        WHERE lead_id = $13
         RETURNING *
       `;
       const serviceRes = await client.query(updateServiceQuery, [
@@ -519,14 +621,23 @@ router.post('/webhook-ingest', async (req, res) => {
         medidas_tecnicas ? JSON.stringify(medidas_tecnicas) : null,
         cor_acabamento,
         checklist_ia ? JSON.stringify(checklist_ia) : null,
+        tipologia,
+        tipo_vidro,
+        classificacao_madeira,
+        certificacao_fsc,
+        persiana_integrada,
+        usa_contramarco,
         leadId
       ]);
       resultService = serviceRes.rows[0];
       console.log(`Lead de WhatsApp ${cleanWhatsapp} atualizado via Webhook.`);
     } else {
       const insertLeadQuery = `
-        INSERT INTO leads (nome_cliente, whatsapp, origem, status_funil, resumo_ia, proxima_acao, temperatura_lead, resposta_sugerida)
-        VALUES ($1, $2, 'WhatsApp', 'Novo lead', $3, $4, $5, $6)
+        INSERT INTO leads (
+          nome_cliente, whatsapp, origem, status_funil, resumo_ia, proxima_acao, temperatura_lead, resposta_sugerida,
+          localizacao_obra, numero_pavimentos, fase_obra, vaos_requadrados, nivel_piso_definido, origem_medidas, aviso_responsabilidade_aceito, estrategia_linha
+        )
+        VALUES ($1, $2, 'WhatsApp', 'Novo lead', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         RETURNING *
       `;
       const leadRes = await client.query(insertLeadQuery, [
@@ -535,14 +646,25 @@ router.post('/webhook-ingest', async (req, res) => {
         resumo_ia,
         proxima_acao ?? 'Qualificar contato inicial.',
         temperatura_lead ?? 'Morno',
-        resposta_sugerida
+        resposta_sugerida,
+        localizacao_obra ?? null,
+        numero_pavimentos ?? null,
+        fase_obra ?? null,
+        vaos_requadrados ?? false,
+        nivel_piso_definido ?? false,
+        origem_medidas ?? null,
+        aviso_responsabilidade_aceito ?? false,
+        estrategia_linha ?? null
       ]);
       resultLead = leadRes.rows[0];
       leadId = resultLead.id;
 
       const insertServiceQuery = `
-        INSERT INTO servicos (lead_id, tipo_servico, material, medidas_brutas, medidas_tecnicas, cor_acabamento, checklist_ia)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        INSERT INTO servicos (
+          lead_id, tipo_servico, material, medidas_brutas, medidas_tecnicas, cor_acabamento, checklist_ia,
+          tipologia, tipo_vidro, classificacao_madeira, certificacao_fsc, persiana_integrada, usa_contramarco
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING *
       `;
       const serviceRes = await client.query(insertServiceQuery, [
@@ -552,7 +674,13 @@ router.post('/webhook-ingest', async (req, res) => {
         medidas_brutas ?? null,
         medidas_tecnicas ? JSON.stringify(medidas_tecnicas) : null,
         cor_acabamento ?? null,
-        checklist_ia ? JSON.stringify(checklist_ia) : null
+        checklist_ia ? JSON.stringify(checklist_ia) : null,
+        tipologia ?? null,
+        tipo_vidro ?? null,
+        classificacao_madeira ?? null,
+        certificacao_fsc ?? false,
+        persiana_integrada ?? null,
+        usa_contramarco ?? true
       ]);
       resultService = serviceRes.rows[0];
       console.log(`Novo Lead de WhatsApp ${cleanWhatsapp} criado via Webhook.`);

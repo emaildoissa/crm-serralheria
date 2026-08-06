@@ -35,7 +35,8 @@ import {
   UserCheck,
   Clock,
   Search,
-  TrendingUp
+  TrendingUp,
+  ShieldCheck
 } from 'lucide-react';
 
 const API_URL = import.meta.env.DEV ? 'http://localhost:5000/api' : (import.meta.env.VITE_API_URL || '/api');
@@ -77,11 +78,26 @@ function App() {
     prazo_desejado: '',
     complexidade: 'Média',
     valor_estimado: 0,
-    tipo_servico: 'Janela de Alumínio',
+    tipo_servico: 'Janela (Alumínio / PVC / Madeira)',
     material: 'Alumínio (Linha Suprema)',
     medidas_brutas: '',
     cor_acabamento: 'Preto Anodizado',
-    necessita_instalacao: true
+    necessita_instalacao: true,
+    // Qualificação Multimaterial
+    localizacao_obra: '',
+    numero_pavimentos: '1',
+    fase_obra: 'Reboco / Acabamento',
+    vaos_requadrados: true,
+    nivel_piso_definido: true,
+    origem_medidas: 'Projeto PDF/DWG',
+    aviso_responsabilidade_aceito: false,
+    estrategia_linha: 'Linha Suprema',
+    tipologia: 'Janela de Correr (2 Folhas)',
+    tipo_vidro: 'Temperado 8mm Incolor',
+    classificacao_madeira: '',
+    certificacao_fsc: false,
+    persiana_integrada: 'Não',
+    usa_contramarco: true
   });
 
   const [editForm, setEditForm] = useState(null);
@@ -106,7 +122,7 @@ function App() {
   const [timelineEvents, setTimelineEvents] = useState([]);
   const [leadInsights, setLeadInsights] = useState(null);
   const [editMode, setEditMode] = useState(false);
-  const [expandedPanels, setExpandedPanels] = useState({ conversa: false, timeline: false, insights: true });
+  const [expandedPanels, setExpandedPanels] = useState({ conversa: false, timeline: false, insights: true, qualificacao: true });
 
   const togglePanel = (panel) => {
     setExpandedPanels(prev => ({ ...prev, [panel]: !prev[panel] }));
@@ -125,7 +141,7 @@ function App() {
       fetchTimeline(selectedLeadId);
       fetchInsights(selectedLeadId);
       setEditMode(false);
-      setExpandedPanels({ conversa: false, timeline: false, insights: true });
+      setExpandedPanels({ conversa: false, timeline: false, insights: true, qualificacao: true });
     }
   }, [selectedLeadId]);
 
@@ -1189,6 +1205,39 @@ function App() {
                     onChange={e => setNewLeadForm({...newLeadForm, valor_estimado: parseFloat(e.target.value) || 0})}
                   />
                 </div>
+                <div className="form-group">
+                  <label className="form-label">Localização da Obra / Andar</label>
+                  <input 
+                    type="text" placeholder="Ex: Beira-mar / 12º andar" className="form-control" 
+                    value={newLeadForm.localizacao_obra}
+                    onChange={e => setNewLeadForm({...newLeadForm, localizacao_obra: e.target.value})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Fase Atual da Obra</label>
+                  <select 
+                    className="form-control"
+                    value={newLeadForm.fase_obra}
+                    onChange={e => setNewLeadForm({...newLeadForm, fase_obra: e.target.value})}
+                  >
+                    <option value="Estrutura / Alvenaria Bruta">Estrutura / Alvenaria Bruta</option>
+                    <option value="Reboco / Acabamento">Reboco / Acabamento</option>
+                    <option value="Vãos Prontos com Contramarco">Vãos Prontos com Contramarco</option>
+                    <option value="Obra Concluída / Substituição">Obra Concluída / Substituição</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Origem das Medidas</label>
+                  <select 
+                    className="form-control"
+                    value={newLeadForm.origem_medidas}
+                    onChange={e => setNewLeadForm({...newLeadForm, origem_medidas: e.target.value})}
+                  >
+                    <option value="Projeto PDF/DWG">Projeto Arquitetônico (PDF / DWG)</option>
+                    <option value="Medição Própria Cliente">Medição Informada pelo Cliente</option>
+                    <option value="Necessita Visita Técnica">Requer Visita Técnica / Medição in loco</option>
+                  </select>
+                </div>
               </div>
               
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
@@ -1302,23 +1351,113 @@ function App() {
                   </div>
 
                   <div className="glass-container" style={{ padding: '20px', marginBottom: '20px' }}>
-                    <h3 style={{ marginBottom: '16px' }}><Layers size={18} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Dados Técnicos</h3>
+                    <h3 style={{ marginBottom: '16px' }}><Layers size={18} style={{ verticalAlign: 'middle', marginRight: '8px' }} />Ficha de Qualificação Multimaterial & Dados Técnicos</h3>
                     <div className="form-grid">
-                      <div className="form-group"><label className="form-label">Tipo de Peça</label>
-                        <input type="text" className="form-control" value={editForm.tipo_servico || ''} onChange={e => setEditForm({...editForm, tipo_servico: e.target.value})} />
+                      <div className="form-group">
+                        <label className="form-label">Tipo de Peça / Elemento</label>
+                        <select className="form-control" value={editForm.tipo_servico || 'Janela (Alumínio / PVC / Madeira)'} onChange={e => setEditForm({...editForm, tipo_servico: e.target.value})}>
+                          <option value="Janela (Alumínio / PVC / Madeira)">Janela (Alumínio / PVC / Madeira)</option>
+                          <option value="Porta (Alumínio / PVC / Madeira)">Porta (Alumínio / PVC / Madeira)</option>
+                          <option value="Fachada Pele de Vidro">Fachada Pele de Vidro (Glazing)</option>
+                          <option value="Guarda-Corpo / Sacada">Guarda-Corpo / Sacada / Envidraçamento</option>
+                          <option value="Portão Integrado / Brise">Portão Integrado / Brise</option>
+                          <option value="Cobertura / Pergolado">Cobertura / Pergolado</option>
+                          <option value="Outro">Outro</option>
+                        </select>
                       </div>
-                      <div className="form-group"><label className="form-label">Material</label>
-                        <input type="text" className="form-control" value={editForm.material || ''} onChange={e => setEditForm({...editForm, material: e.target.value})} />
+                      <div className="form-group">
+                        <label className="form-label">Material Principal</label>
+                        <select className="form-control" value={editForm.material || 'Alumínio (Linha Suprema)'} onChange={e => setEditForm({...editForm, material: e.target.value})}>
+                          <option value="Alumínio (Linha Suprema)">Alumínio (Linha Suprema)</option>
+                          <option value="Alumínio (Linha Gold)">Alumínio (Linha Gold)</option>
+                          <option value="PVC">PVC (Termoacústico)</option>
+                          <option value="Madeira (Maciça / Engenheirada)">Madeira (Maciça / Engenheirada)</option>
+                          <option value="Vidro Temperado / Laminado">Vidro Temperado / Laminado</option>
+                          <option value="Aço Inox">Aço Inox</option>
+                        </select>
                       </div>
-                      <div className="form-group"><label className="form-label">Cor / Acabamento</label>
-                        <input type="text" className="form-control" value={editForm.cor_acabamento || ''} onChange={e => setEditForm({...editForm, cor_acabamento: e.target.value})} />
+                      <div className="form-group">
+                        <label className="form-label">Linha / Estratégia de Perfis</label>
+                        <input type="text" className="form-control" placeholder="Ex: Linha Gold / PVC 70mm / Madeira PXM" value={editForm.estrategia_linha || ''} onChange={e => setEditForm({...editForm, estrategia_linha: e.target.value})} />
                       </div>
-                      <div className="form-group"><label className="form-label">Medidas</label>
-                        <input type="text" className="form-control" placeholder="L: 3m x A: 2.20m" value={editForm.medidas_brutas || ''} onChange={e => setEditForm({...editForm, medidas_brutas: e.target.value})} />
+                      <div className="form-group">
+                        <label className="form-label">Tipologia de Abertura</label>
+                        <input type="text" className="form-control" placeholder="Ex: Correr 2 Folhas / Maxim-ar / Pivotante" value={editForm.tipologia || ''} onChange={e => setEditForm({...editForm, tipologia: e.target.value})} />
                       </div>
+                      <div className="form-group">
+                        <label className="form-label">Especificação do Vidro</label>
+                        <input type="text" className="form-control" placeholder="Ex: Temperado 8mm / Duplo Insulado 4+12+4" value={editForm.tipo_vidro || ''} onChange={e => setEditForm({...editForm, tipo_vidro: e.target.value})} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Cor / Tratamento de Superfície</label>
+                        <input type="text" className="form-control" placeholder="Ex: Preto Anodizado / Verniz PU Marítimo" value={editForm.cor_acabamento || ''} onChange={e => setEditForm({...editForm, cor_acabamento: e.target.value})} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Medidas Iniciais / Brutas</label>
+                        <input type="text" className="form-control" placeholder="Ex: 3.00m L x 2.20m A" value={editForm.medidas_brutas || ''} onChange={e => setEditForm({...editForm, medidas_brutas: e.target.value})} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Localização da Obra / Andar</label>
+                        <input type="text" className="form-control" placeholder="Ex: Beira-mar (Alta Salinidade) / 14º andar" value={editForm.localizacao_obra || ''} onChange={e => setEditForm({...editForm, localizacao_obra: e.target.value})} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Número de Pavimentos</label>
+                        <input type="number" className="form-control" value={editForm.numero_pavimentos || 1} onChange={e => setEditForm({...editForm, numero_pavimentos: e.target.value})} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Fase Atual da Obra</label>
+                        <select className="form-control" value={editForm.fase_obra || 'Reboco / Acabamento'} onChange={e => setEditForm({...editForm, fase_obra: e.target.value})}>
+                          <option value="Estrutura / Alvenaria Bruta">Estrutura / Alvenaria Bruta</option>
+                          <option value="Reboco / Acabamento">Reboco / Acabamento</option>
+                          <option value="Vãos Prontos com Contramarco">Vãos Prontos com Contramarco</option>
+                          <option value="Obra Concluída / Substituição">Obra Concluída / Substituição</option>
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Origem das Medidas</label>
+                        <select className="form-control" value={editForm.origem_medidas || 'Projeto PDF/DWG'} onChange={e => setEditForm({...editForm, origem_medidas: e.target.value})}>
+                          <option value="Projeto PDF/DWG">Projeto Arquitetônico (PDF / DWG)</option>
+                          <option value="Medição Própria Cliente">Medição Informada pelo Cliente</option>
+                          <option value="Necessita Visita Técnica">Requer Visita Técnica / Medição in loco</option>
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Persiana Integrada</label>
+                        <select className="form-control" value={editForm.persiana_integrada || 'Não'} onChange={e => setEditForm({...editForm, persiana_integrada: e.target.value})}>
+                          <option value="Não">Não</option>
+                          <option value="Manual com Esteira de Alumínio">Manual (Com Esteira de Alumínio)</option>
+                          <option value="Motorizada com Controle">Motorizada com Controle Remoto</option>
+                        </select>
+                      </div>
+                      {editForm.material && editForm.material.toLowerCase().includes('madeira') && (
+                        <>
+                          <div className="form-group">
+                            <label className="form-label">Classificação da Madeira</label>
+                            <input type="text" className="form-control" placeholder="Ex: Cumaru / Garapeira / Itaúba" value={editForm.classificacao_madeira || ''} onChange={e => setEditForm({...editForm, classificacao_madeira: e.target.value})} />
+                          </div>
+                          <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '24px' }}>
+                            <input type="checkbox" id="fsc_check" checked={!!editForm.certificacao_fsc} onChange={e => setEditForm({...editForm, certificacao_fsc: e.target.checked})} />
+                            <label htmlFor="fsc_check" className="form-label" style={{ margin: 0, cursor: 'pointer' }}>Possui Certificação FSC / DOF Legal</label>
+                          </div>
+                        </>
+                      )}
                     </div>
-                    <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
-                      <button type="button" className="btn btn-primary" onClick={handleUpdateLead}>Atualizar Dados Técnicos</button>
+                    <div style={{ marginTop: '16px', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={!!editForm.vaos_requadrados} onChange={e => setEditForm({...editForm, vaos_requadrados: e.target.checked})} />
+                        Vãos Requadrados/Rebocados
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={!!editForm.nivel_piso_definido} onChange={e => setEditForm({...editForm, nivel_piso_definido: e.target.checked})} />
+                        Nível do Piso / Soleira Definido
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={!!editForm.aviso_responsabilidade_aceito} onChange={e => setEditForm({...editForm, aviso_responsabilidade_aceito: e.target.checked})} />
+                        Aviso de Resp. de Metragem Notificado ao Cliente
+                      </label>
+                    </div>
+                    <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
+                      <button type="button" className="btn btn-primary" onClick={handleUpdateLead}>Salvar Qualificação & Dados Técnicos</button>
                     </div>
                   </div>
 
@@ -1443,6 +1582,46 @@ function App() {
                     </div>
                   </div>
 
+                  {/* Bloco 3: Ficha de Qualificação Multimaterial (ABNT NBR 10821) */}
+                  <div className={`accordion-panel ${expandedPanels.qualificacao ? 'expanded' : ''}`} style={{ marginBottom: '16px' }}>
+                    <div className="accordion-header" onClick={() => togglePanel('qualificacao')}>
+                      <div className="accordion-title"><ShieldCheck size={18} color="#06d6a0" /><span>Ficha de Qualificação Multimaterial & Alertas de Obra</span></div>
+                      {expandedPanels.qualificacao ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                    </div>
+                    {expandedPanels.qualificacao && (
+                      <div className="accordion-body" style={{ padding: '16px' }}>
+                        <div className="tech-data-grid" style={{ marginBottom: '12px' }}>
+                          <div className="tech-item"><span className="tech-label">Material & Linha</span><span className="tech-value">{editForm.material || 'Alumínio'} {editForm.estrategia_linha ? `(${editForm.estrategia_linha})` : ''}</span></div>
+                          <div className="tech-item"><span className="tech-label">Tipologia & Abertura</span><span className="tech-value">{editForm.tipologia || 'Não especificada'}</span></div>
+                          <div className="tech-item"><span className="tech-label">Especificação do Vidro</span><span className="tech-value">{editForm.tipo_vidro || 'Padrão / Não informado'}</span></div>
+                          <div className="tech-item"><span className="tech-label">Localização / Vento</span><span className="tech-value">{editForm.localizacao_obra || 'Local não informado'} ({editForm.numero_pavimentos || 1}º pav)</span></div>
+                          <div className="tech-item"><span className="tech-label">Fase da Obra</span><span className="tech-value"><span className="tag tag-service" style={{ fontSize: '0.72rem' }}>{editForm.fase_obra || 'Em andamento'}</span></span></div>
+                          <div className="tech-item"><span className="tech-label">Origem das Medidas</span><span className="tech-value">{editForm.origem_medidas || 'Medição Inicial'}</span></div>
+                          <div className="tech-item"><span className="tech-label">Persiana Integrada</span><span className="tech-value">{editForm.persiana_integrada || 'Não'}</span></div>
+                          {editForm.material && editForm.material.toLowerCase().includes('madeira') && (
+                            <>
+                              <div className="tech-item"><span className="tech-label">Classificação da Madeira</span><span className="tech-value">{editForm.classificacao_madeira || 'Não informada'}</span></div>
+                              <div className="tech-item"><span className="tech-label">Selo Sustentável</span><span className="tech-value">{editForm.certificacao_fsc ? '🟢 Certificação FSC / DOF Ativo' : '🔴 Sem Selo FSC'}</span></div>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Status de Alertas Rápidos de Qualificação */}
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
+                          <span className={`tag ${editForm.vaos_requadrados ? 'tag-temp-frio' : 'tag-temp-quente'}`} style={{ fontSize: '0.72rem' }}>
+                            {editForm.vaos_requadrados ? '✓ Vãos Requadrados' : '⚠ Vãos NÃO Requadrados'}
+                          </span>
+                          <span className={`tag ${editForm.nivel_piso_definido ? 'tag-temp-frio' : 'tag-temp-quente'}`} style={{ fontSize: '0.72rem' }}>
+                            {editForm.nivel_piso_definido ? '✓ Nível Soleira OK' : '⚠ Nível Piso Pendente'}
+                          </span>
+                          <span className={`tag ${editForm.aviso_responsabilidade_aceito ? 'tag-temp-frio' : 'tag-temp-morno'}`} style={{ fontSize: '0.72rem' }}>
+                            {editForm.aviso_responsabilidade_aceito ? '🛡 Resp. Metragem Aceito' : '📋 Enviar Aviso de Resp. Metragem'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Blocos 4-6: Accordions */}
                   <div className="lead-accordions">
                     {/* Conversa */}
@@ -1467,11 +1646,11 @@ function App() {
                           </div>
 
                           <div className="chat-quick-actions">
-                            <button className="chat-quick-action" onClick={() => setReplyText(`Olá ${editForm.nome_cliente}! Recebemos sua solicitação de ${editForm.tipo_servico || 'serviço'}.`)}><MessageSquare size={14} /> Responder</button>
-                            <button className="chat-quick-action" onClick={() => setReplyText(`Olá ${editForm.nome_cliente}! Você poderia enviar fotos do local para agilizar o orçamento?`)}><Camera size={14} /> Fotos</button>
-                            <button className="chat-quick-action" onClick={() => setReplyText(`Olá ${editForm.nome_cliente}! Para confirmarmos as medidas, informe largura e altura do vão.`)}><Ruler size={14} /> Medidas</button>
+                            <button className="chat-quick-action" onClick={() => setReplyText(`Olá ${editForm.nome_cliente}! Recebemos sua solicitação de ${editForm.tipo_servico || 'esquadrias'}.`)}><MessageSquare size={14} /> Responder</button>
+                            <button className="chat-quick-action" onClick={() => setReplyText(`Olá ${editForm.nome_cliente}! Para um orçamento prévio preciso, você possui o projeto arquitetônico em PDF/DWG? *Aviso:* Orçamentos com medidas do cliente são estimativos até a medição in loco.`)}><FileEdit size={14} /> Script 1: Projeto PDF</button>
+                            <button className="chat-quick-action" onClick={() => setReplyText(`Olá ${editForm.nome_cliente}! Para agendarmos a medição técnica, os vãos da sua obra já estão requadrados/rebocados e com a soleira/nível do piso definido?`)}><Ruler size={14} /> Script 2: Visita / Vãos</button>
+                            <button className="chat-quick-action" onClick={() => setReplyText(`Olá ${editForm.nome_cliente}! Trabalhamos com Alumínio (Linha Gold/Suprema), PVC Termoacústico e Madeira de Alto Padrão (Certificada FSC). Qual linha atende melhor seu projeto?`)}><Sparkles size={14} /> Script 3: Materiais</button>
                             <button className="chat-quick-action" onClick={() => { window.open(`https://wa.me/${(editForm.whatsapp || '').replace(/\D/g, '')}`, '_blank'); }}><User size={14} /> WhatsApp</button>
-                            <button className="chat-quick-action" onClick={() => setEditMode(true)}><Calendar size={14} /> Visita</button>
                           </div>
 
                           <div className="chat-inline-controls">
