@@ -20,10 +20,7 @@ import {
   Camera,
   Trash2,
   FileEdit,
-  Ruler,
   RefreshCw,
-  CheckSquare,
-  ArrowRight,
   Lightbulb,
   History,
   Send,
@@ -36,7 +33,10 @@ import {
   Clock,
   Search,
   TrendingUp,
-  ShieldCheck
+  ShieldCheck,
+  BarChart3,
+  Siren,
+  Handshake
 } from 'lucide-react';
 
 const API_URL = import.meta.env.DEV ? 'http://localhost:5000/api' : (import.meta.env.VITE_API_URL || '/api');
@@ -57,6 +57,102 @@ const COLUMNS = [
   { id: 'Finalizado', label: 'Finalizado', color: 'var(--color-finalizado)' },
   { id: 'Perdido', label: 'Perdido', color: 'var(--color-perdido)' }
 ];
+
+// Zonas semânticas do funil (frio → cobre → âmbar → verde → perdido)
+const FUNNEL_ZONES = [
+  { id: 'cold', label: 'Funil frio', color: 'var(--color-novo)', stages: ['Novo lead', 'Contato iniciado', 'Qualificação'] },
+  { id: 'copper', label: 'Medição', color: 'var(--color-medicao)', stages: ['Medição agendada', 'Medição realizada'] },
+  { id: 'warm', label: 'Orçamento / Negociação', color: 'var(--color-orcamento)', stages: ['Orçamento em elaboração', 'Orçamento enviado', 'Negociação'] },
+  { id: 'green', label: 'Fechado → Finalizado', color: 'var(--color-fechado)', stages: ['Fechado', 'Produção', 'Instalação', 'Finalizado'] },
+  { id: 'red', label: 'Perdido', color: 'var(--color-perdido)', stages: ['Perdido'] }
+];
+
+function AnimatedNumber({ value, format }) {
+  const [display, setDisplay] = useState(0);
+
+  useEffect(() => {
+    const target = Number(value) || 0;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setDisplay(target);
+      return undefined;
+    }
+    let raf;
+    const start = performance.now();
+    const duration = 900;
+    const tick = (now) => {
+      const p = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setDisplay(target * eased);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+
+  return format ? format(display) : Math.round(display);
+}
+
+function MetricGauge({ label, value, format, icon, iconBg, iconColor }) {
+  return (
+    <div className="metric-card glass-container">
+      <div className="metric-data">
+        <h4>{label}</h4>
+        <p><AnimatedNumber value={value} format={format} /></p>
+      </div>
+      <div className="metric-icon-wrapper" style={{ backgroundColor: iconBg, color: iconColor }}>
+        {icon}
+      </div>
+    </div>
+  );
+}
+
+function StageBars({ counts }) {
+  const max = Math.max(1, ...COLUMNS.map(c => counts[c.id] || 0));
+  return (
+    <div className="stage-bars">
+      {COLUMNS.map((col, i) => {
+        const qty = counts[col.id] || 0;
+        const pct = (qty / max) * 100;
+        return (
+          <div key={col.id} className="stage-bar-row">
+            <span title={col.label}>{col.label}</span>
+            <div className="stage-bar-track">
+              <div className="stage-bar-fill" style={{ width: `${pct}%`, backgroundColor: col.color, animationDelay: `${i * 0.03}s` }} />
+            </div>
+            <span className="stage-bar-val">{qty}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ZoneStrip({ counts }) {
+  const total = Math.max(1, Object.values(counts).reduce((a, b) => a + (Number(b) || 0), 0));
+  return (
+    <>
+      <div className="zone-strip">
+        {FUNNEL_ZONES.map(zone => {
+          const qty = zone.stages.reduce((a, s) => a + (counts[s] || 0), 0);
+          return (
+            <div
+              key={zone.id}
+              className="zone-strip-seg"
+              style={{ width: `${(qty / total) * 100}%`, backgroundColor: zone.color }}
+              title={`${zone.label}: ${qty}`}
+            />
+          );
+        })}
+      </div>
+      <div className="zone-legend">
+        {FUNNEL_ZONES.map(zone => {
+          const qty = zone.stages.reduce((a, s) => a + (counts[s] || 0), 0);
+          return <span key={zone.id}><i style={{ backgroundColor: zone.color }} />{zone.label} — {qty}</span>;
+        })}
+      </div>
+    </>
+  );
+}
 
 function App() {
   const [currentTab, setCurrentTab] = useState('dashboard'); // dashboard, kanban, agenda, producao
@@ -174,15 +270,17 @@ function App() {
   };
 
   const handleDeleteConhecimento = async (id) => {
-    if (!window.confirm('Tem certeza que deseja excluir esta regra da Base de Conhecimento?')) return;
-    try {
-      const res = await fetch(`${API_URL}/conhecimento/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        fetchConhecimento();
+    confirmAction('Tem certeza que deseja excluir esta regra da Base de Conhecimento?', async () => {
+      try {
+        const res = await fetch(`${API_URL}/conhecimento/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          fetchConhecimento();
+          notify('Regra removida da Base de Conhecimento');
+        }
+      } catch (err) {
+        console.error(err);
       }
-    } catch (err) {
-      console.error(err);
-    }
+    });
   };
 
   // Recarregar dados do lead selecionado para atualizar as abas secundárias
@@ -379,7 +477,7 @@ function App() {
         fetchLeadDetail(editForm.id);
         fetchLeads();
         fetchDashboardData();
-        alert('Cadastro atualizado com sucesso!');
+        notify('Cadastro atualizado com sucesso');
       }
     } catch (err) {
       console.error(err);
@@ -406,20 +504,22 @@ function App() {
   };
 
   const handleDeleteLead = async (leadId) => {
-    if (!window.confirm('Tem certeza que deseja excluir permanentemente esta obra/lead?')) return;
-    try {
-      const res = await fetch(`${API_URL}/leads/${leadId}`, {
-        method: 'DELETE'
-      });
-      if (res.ok) {
-        setSelectedLeadId(null);
-        setLeadDetail(null);
-        fetchLeads();
-        fetchDashboardData();
+    confirmAction('Tem certeza que deseja excluir permanentemente esta obra/lead?', async () => {
+      try {
+        const res = await fetch(`${API_URL}/leads/${leadId}`, {
+          method: 'DELETE'
+        });
+        if (res.ok) {
+          setSelectedLeadId(null);
+          setLeadDetail(null);
+          fetchLeads();
+          fetchDashboardData();
+          notify('Obra/lead excluído');
+        }
+      } catch (err) {
+        console.error(err);
       }
-    } catch (err) {
-      console.error(err);
-    }
+    });
   };
 
   const handleAddCompromisso = async (e) => {
@@ -466,7 +566,7 @@ function App() {
       if (res.ok) {
         fetchLeadDetail(selectedLeadId);
         fetchDashboardData();
-        alert('Ordem de produção salva!');
+        notify('Ordem de produção salva');
       }
     } catch (err) {
       console.error(err);
@@ -507,6 +607,19 @@ function App() {
   const [contextReplyText, setContextReplyText] = useState('');
   const [contextSending, setContextSending] = useState(false);
 
+  // Toast + Confirmação in-app
+  const [toast, setToast] = useState(null);
+  const [confirmItem, setConfirmItem] = useState(null);
+
+  const notify = (msg, type = 'ok') => {
+    setToast({ msg, type });
+    window.setTimeout(() => setToast(null), 3200);
+  };
+
+  const confirmAction = (message, onConfirm) => {
+    setConfirmItem({ message, onConfirm });
+  };
+
   useEffect(() => {
     if (contextLeadId) {
       fetchContextLeadDetail(contextLeadId);
@@ -545,18 +658,13 @@ function App() {
     setSendingMsg(false);
   };
 
-  function KanbanCard({ lead }) {
-    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-      id: lead.id,
-      data: { status_funil: lead.status_funil }
-    });
-    const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 999, opacity: 0.85 } : {};
+  function KanbanCardBody({ lead }) {
     return (
-      <div ref={setNodeRef} {...listeners} {...attributes} className="kanban-card" onClick={() => setSelectedLeadId(lead.id)} style={style}>
+      <>
         <div className="kanban-card-title">{lead.nome_cliente}</div>
         <div className="kanban-card-meta">
           <div className="meta-row"><Phone size={12} /><span>{lead.whatsapp || 'Sem WhatsApp'}</span></div>
-          {lead.endereco_obra && <div className="meta-row"><MapPin size={12} /><span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '200px' }}>{lead.endereco_obra}</span></div>}
+          {lead.endereco_obra && <div className="meta-row"><MapPin size={12} /><span className="addr-ellipsis">{lead.endereco_obra}</span></div>}
         </div>
         <div className="kanban-card-tags">
           {lead.tipo_servico && <span className="tag tag-service">{lead.tipo_servico}</span>}
@@ -565,8 +673,21 @@ function App() {
         </div>
         <div className="kanban-card-footer">
           <span className="card-value">{lead.valor_fechado > 0 ? formatCurrency(lead.valor_fechado) : formatCurrency(lead.valor_estimado)}</span>
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(lead.updated_at).toLocaleDateString('pt-BR')}</span>
+          <span className="card-date">{new Date(lead.updated_at).toLocaleDateString('pt-BR')}</span>
         </div>
+      </>
+    );
+  }
+
+  function KanbanCard({ lead }) {
+    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+      id: lead.id,
+      data: { status_funil: lead.status_funil }
+    });
+    const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 999 } : {};
+    return (
+      <div ref={setNodeRef} {...listeners} {...attributes} className={`kanban-card ${isDragging ? 'dragging' : ''}`} onClick={() => setSelectedLeadId(lead.id)} style={style}>
+        <KanbanCardBody lead={lead} />
       </div>
     );
   }
@@ -574,10 +695,10 @@ function App() {
   function KanbanColumn({ col, leads }) {
     const { setNodeRef, isOver } = useDroppable({ id: col.id });
     return (
-      <div ref={setNodeRef} className="kanban-column" style={{ backgroundColor: isOver ? 'rgba(67, 97, 238, 0.08)' : 'transparent' }}>
+      <div ref={setNodeRef} className={`kanban-column ${isOver ? 'is-over' : ''}`}>
         <div className="kanban-column-header" style={{ borderBottomColor: col.color }}>
           <span className="kanban-column-title">
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: col.color, display: 'inline-block' }}></span>
+            <span className="zone-dot" style={{ backgroundColor: col.color, color: col.color }}></span>
             {col.label}
           </span>
           <span className="kanban-column-count">{leads.length}</span>
@@ -593,74 +714,101 @@ function App() {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
   };
 
+  // Contagem de leads por estágio do funil (para os gráficos do dashboard)
+  const stageCounts = {};
+  (dashboardData?.status_funil || []).forEach(s => {
+    stageCounts[s.status_funil] = Number(s.qtd) || 0;
+  });
+
   return (
     <div className="app-container">
       {/* Sidebar de Navegação */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-brand">
           <div className="sidebar-brand-inner">
-            <div className="sidebar-logo-icon">E</div>
-            <span className="sidebar-brand-text">Esquadrias OS</span>
+            <div className="sidebar-logo-icon">
+              <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                <g stroke="#f5a524" strokeWidth="2">
+                  <rect x="5" y="5" width="14" height="22" rx="1.5" />
+                  <rect x="19" y="5" width="8" height="22" rx="1.5" />
+                </g>
+                <path d="M16 5v22" stroke="#7aa2ff" strokeWidth="1.5" strokeDasharray="2 2.5" />
+                <circle cx="16" cy="16" r="2" fill="#f5a524" stroke="none" />
+              </svg>
+            </div>
+            <span className="sidebar-brand-text">Esquadrias OS<small>Controle de Obras</small></span>
           </div>
           <button className="sidebar-close-btn" onClick={() => setSidebarOpen(false)} aria-label="Fechar menu">
             <X size={20} />
           </button>
         </div>
-        
-        <ul className="sidebar-menu">
+
+        <ul className="sidebar-menu" role="navigation" aria-label="Navegação principal">
           <li>
-            <a 
+            <button
               className={`sidebar-menu-item ${currentTab === 'dashboard' ? 'active' : ''}`}
               onClick={() => { setCurrentTab('dashboard'); fetchDashboardData(); setSidebarOpen(false); }}
+              aria-current={currentTab === 'dashboard' ? 'page' : undefined}
             >
               <LayoutDashboard size={20} />
               Dashboard & IA
-            </a>
+              <span className="menu-index">01</span>
+            </button>
           </li>
           <li>
-            <a 
+            <button
               className={`sidebar-menu-item ${currentTab === 'kanban' ? 'active' : ''}`}
               onClick={() => { setCurrentTab('kanban'); fetchLeads(); setSidebarOpen(false); }}
+              aria-current={currentTab === 'kanban' ? 'page' : undefined}
             >
               <KanbanSquare size={20} />
               Funil de Obras
-            </a>
+              <span className="menu-index">02</span>
+            </button>
           </li>
           <li>
-            <a 
+            <button
               className={`sidebar-menu-item ${currentTab === 'agenda' ? 'active' : ''}`}
               onClick={() => { setCurrentTab('agenda'); setSidebarOpen(false); }}
+              aria-current={currentTab === 'agenda' ? 'page' : undefined}
             >
               <Calendar size={20} />
               Agenda Técnica
-            </a>
+              <span className="menu-index">03</span>
+            </button>
           </li>
           <li>
-            <a 
+            <button
               className={`sidebar-menu-item ${currentTab === 'producao' ? 'active' : ''}`}
               onClick={() => { setCurrentTab('producao'); setSidebarOpen(false); }}
+              aria-current={currentTab === 'producao' ? 'page' : undefined}
             >
               <Wrench size={20} />
               Fábrica & Produção
-            </a>
+              <span className="menu-index">04</span>
+            </button>
           </li>
           <li>
-            <a 
+            <button
               className={`sidebar-menu-item ${currentTab === 'ia-contextual' ? 'active' : ''}`}
               onClick={() => { setCurrentTab('ia-contextual'); fetchLeads(); setSidebarOpen(false); }}
+              aria-current={currentTab === 'ia-contextual' ? 'page' : undefined}
             >
               <Sparkles size={20} />
               IA Contextual
-            </a>
+              <span className="menu-index">05</span>
+            </button>
           </li>
           <li>
-            <a 
+            <button
               className={`sidebar-menu-item ${currentTab === 'conhecimento' ? 'active' : ''}`}
               onClick={() => { setCurrentTab('conhecimento'); fetchConhecimento(); setSidebarOpen(false); }}
+              aria-current={currentTab === 'conhecimento' ? 'page' : undefined}
             >
               <FileEdit size={20} />
               Base de Conhecimento IA
-            </a>
+              <span className="menu-index">06</span>
+            </button>
           </li>
         </ul>
         <div className="sidebar-action">
@@ -670,7 +818,7 @@ function App() {
           </button>
         </div>
         <div className="sidebar-footer">
-          <span>v1.2.0 - Dockerizado</span>
+          <span>SOE·OPS v1.2 — Fábrica</span>
         </div>
       </aside>
 
@@ -684,6 +832,14 @@ function App() {
               <Menu size={22} />
             </button>
             <div className="header-title-area">
+              <span className="plate-no">
+                {currentTab === 'dashboard' && '01'}
+                {currentTab === 'kanban' && '02'}
+                {currentTab === 'agenda' && '03'}
+                {currentTab === 'producao' && '04'}
+                {currentTab === 'ia-contextual' && '05'}
+                {currentTab === 'conhecimento' && '06'}
+              </span>
               <h1>
                 <span className="hide-mobile">
                   {currentTab === 'dashboard' && 'Dashboard & Inteligência de Operação'}
@@ -708,130 +864,179 @@ function App() {
         </header>
 
         {/* -------------------- TAB: DASHBOARD & IA -------------------- */}
-        {currentTab === 'dashboard' && dashboardData && (
-          <div className="dashboard-grid">
-            <div className="metric-card glass-container">
-              <div className="metric-data">
-                <h4>Pipeline Estimado</h4>
-                <p>{formatCurrency(dashboardData.pipeline.valor_total_estimado)}</p>
-              </div>
-              <div className="metric-icon-wrapper" style={{ backgroundColor: 'rgba(67, 97, 238, 0.15)', color: 'var(--primary)' }}>
-                <DollarSign size={24} />
-              </div>
-            </div>
+        {currentTab === 'dashboard' && (
+          dashboardData ? (
+            <div className="dashboard-grid">
+              <MetricGauge
+                label="Pipeline Estimado"
+                value={dashboardData.pipeline.valor_total_estimado}
+                format={(v) => formatCurrency(v)}
+                icon={<DollarSign size={24} />}
+                iconBg="var(--trace-glow)"
+                iconColor="var(--trace)"
+              />
 
-            <div className="metric-card glass-container">
-              <div className="metric-data">
-                <h4>Faturamento Fechado</h4>
-                <p>{formatCurrency(dashboardData.pipeline.valor_total_fechado)}</p>
-              </div>
-              <div className="metric-icon-wrapper" style={{ backgroundColor: 'rgba(6, 214, 160, 0.15)', color: 'var(--color-fechado)' }}>
-                <CheckCircle size={24} />
-              </div>
-            </div>
+              <MetricGauge
+                label="Faturamento Fechado"
+                value={dashboardData.pipeline.valor_total_fechado}
+                format={(v) => formatCurrency(v)}
+                icon={<CheckCircle size={24} />}
+                iconBg="rgba(47, 158, 107, 0.14)"
+                iconColor="var(--green-bright)"
+              />
 
-            <div className="metric-card glass-container">
-              <div className="metric-data">
-                <h4>Conversão (Fechados)</h4>
-                <p>
-                  {dashboardData.pipeline.fechados_qtd + dashboardData.pipeline.perdidos_qtd > 0 
-                    ? ((dashboardData.pipeline.fechados_qtd / (dashboardData.pipeline.fechados_qtd + dashboardData.pipeline.perdidos_qtd)) * 100).toFixed(0) + '%'
-                    : '100%'}
-                </p>
-              </div>
-              <div className="metric-icon-wrapper" style={{ backgroundColor: 'rgba(76, 201, 240, 0.15)', color: 'var(--color-instalacao)' }}>
-                <Layers size={24} />
-              </div>
-            </div>
+              <MetricGauge
+                label="Conversão (Fechados)"
+                value={dashboardData.pipeline.fechados_qtd + dashboardData.pipeline.perdidos_qtd > 0
+                  ? (dashboardData.pipeline.fechados_qtd / (dashboardData.pipeline.fechados_qtd + dashboardData.pipeline.perdidos_qtd)) * 100
+                  : 100}
+                format={(v) => `${Math.round(v)}%`}
+                icon={<Layers size={24} />}
+                iconBg="rgba(122, 162, 255, 0.14)"
+                iconColor="var(--color-novo)"
+              />
 
-            <div className="metric-card glass-container">
-              <div className="metric-data">
-                <h4>Ordens de Produção</h4>
-                <p>{dashboardData.producao_ativa.length} ativas</p>
-              </div>
-              <div className="metric-icon-wrapper" style={{ backgroundColor: 'rgba(255, 183, 3, 0.15)', color: 'var(--color-producao)' }}>
-                <Wrench size={24} />
-              </div>
-            </div>
+              <MetricGauge
+                label="Ordens de Produção"
+                value={dashboardData.producao_ativa.length}
+                format={(v) => `${Math.round(v)} ativas`}
+                icon={<Wrench size={24} />}
+                iconBg="rgba(245, 165, 36, 0.14)"
+                iconColor="var(--primary-hover)"
+              />
 
-            {/* Leads Parados (Alerta IA) */}
-            <div className="db-section-large glass-container">
-              <h3><AlertTriangle size={20} color="var(--temp-quente)" /> Alertas de Ação da IA (Leads Parados/Esfriando)</h3>
-              <table className="db-table">
-                <thead>
-                  <tr>
-                    <th>Cliente</th>
-                    <th>Fase Atual</th>
-                    <th>Última Atualização</th>
-                    <th>Temperatura</th>
-                    <th>Próxima Ação Sugerida pela IA</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {dashboardData.insights_ia.leads_parados.length > 0 ? (
-                    dashboardData.insights_ia.leads_parados.map(lead => (
-                      <tr key={lead.id} style={{ cursor: 'pointer' }} onClick={() => setSelectedLeadId(lead.id)}>
-                        <td><strong>{lead.nome_cliente}</strong></td>
-                        <td>{lead.status_funil}</td>
-                        <td>{new Date(lead.updated_at).toLocaleDateString('pt-BR')}</td>
-                        <td>
-                          <span className={`tag tag-temp-${lead.temperatura_lead?.toLowerCase()}`}>
-                            {lead.temperatura_lead}
-                          </span>
-                        </td>
-                        <td style={{ color: 'var(--text-main)' }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                            <Sparkles size={14} color="#829aff" /> {lead.proxima_acao || 'Solicitar fotos complementares ou agendar medição.'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
+              {/* Leads Parados (Alerta IA) */}
+              <div className="db-section-large glass-container">
+                <h3><AlertTriangle size={20} color="var(--red)" /> Alertas de Ação da IA (Leads Parados/Esfriando)</h3>
+                <table className="db-table">
+                  <thead>
                     <tr>
-                      <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Nenhum lead com alerta de inatividade! Operação em dia.</td>
+                      <th>Cliente</th>
+                      <th>Fase Atual</th>
+                      <th>Última Atualização</th>
+                      <th>Temperatura</th>
+                      <th>Próxima Ação Sugerida pela IA</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Compromissos da Semana */}
-            <div className="db-section-large glass-container">
-              <h3><Calendar size={20} color="var(--primary)" /> Próximas Medições & Instalações</h3>
-              <table className="db-table">
-                <thead>
-                  <tr>
-                    <th>Tipo</th>
-                    <th>Cliente</th>
-                    <th>Data & Hora</th>
-                    <th>Responsável</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {dashboardData.compromissos_proximos.length > 0 ? (
-                    dashboardData.compromissos_proximos.map(comp => (
-                      <tr key={comp.id} style={{ cursor: 'pointer' }} onClick={() => setSelectedLeadId(comp.lead_id)}>
-                        <td>
-                          <span className={`tag ${comp.tipo === 'Medição' ? 'tag-temp-morno' : 'tag-service'}`}>
-                            {comp.tipo}
-                          </span>
-                        </td>
-                        <td>{comp.nome_cliente}</td>
-                        <td>{new Date(comp.data_hora).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</td>
-                        <td>{comp.responsavel || 'Não designado'}</td>
-                        <td>{comp.status}</td>
+                  </thead>
+                  <tbody>
+                    {dashboardData.insights_ia.leads_parados.length > 0 ? (
+                      dashboardData.insights_ia.leads_parados.map(lead => (
+                        <tr key={lead.id} className="row-click" onClick={() => setSelectedLeadId(lead.id)}>
+                          <td><strong>{lead.nome_cliente}</strong></td>
+                          <td>{lead.status_funil}</td>
+                          <td>{new Date(lead.updated_at).toLocaleDateString('pt-BR')}</td>
+                          <td>
+                            <span className={`tag tag-temp-${lead.temperatura_lead?.toLowerCase()}`}>
+                              {lead.temperatura_lead}
+                            </span>
+                          </td>
+                          <td className="cell-ia">
+                            <Sparkles size={14} color="var(--trace)" /> {lead.proxima_acao || 'Solicitar fotos complementares ou agendar medição.'}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="5" className="cell-empty">Nenhum lead com alerta de inatividade! Operação em dia.</td>
                       </tr>
-                    ))
-                  ) : (
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Compromissos da Semana */}
+              <div className="db-section-large glass-container">
+                <h3><Calendar size={20} color="var(--primary)" /> Próximas Medições & Instalações</h3>
+                <table className="db-table">
+                  <thead>
                     <tr>
-                      <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Sem visitas agendadas para os próximos dias.</td>
+                      <th>Tipo</th>
+                      <th>Cliente</th>
+                      <th>Data & Hora</th>
+                      <th>Responsável</th>
+                      <th>Status</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {dashboardData.compromissos_proximos.length > 0 ? (
+                      dashboardData.compromissos_proximos.map(comp => (
+                        <tr key={comp.id} className="row-click" onClick={() => setSelectedLeadId(comp.lead_id)}>
+                          <td>
+                            <span className={`tag ${comp.tipo === 'Medição' ? 'tag-temp-morno' : 'tag-service'}`}>
+                              {comp.tipo}
+                            </span>
+                          </td>
+                          <td>{comp.nome_cliente}</td>
+                          <td>{new Date(comp.data_hora).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                          <td>{comp.responsavel || 'Não designado'}</td>
+                          <td>{comp.status}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="5" className="cell-empty">Sem visitas agendadas para os próximos dias.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Distribuição do Funil */}
+              <div className="db-section-large glass-container">
+                <h3><BarChart3 size={20} color="var(--trace)" /> Distribuição do Funil — Obras por Estágio</h3>
+                <div className="chart-plates">
+                  <div className="chart-block">
+                    <h4>Unidades por estágio</h4>
+                    <StageBars counts={stageCounts} />
+                  </div>
+                  <div className="chart-block">
+                    <h4>Zonas do ciclo de obra</h4>
+                    <ZoneStrip counts={stageCounts} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Motivos de Perda */}
+              <div className="db-section-large glass-container">
+                <h3><TrendingUp size={20} color="var(--red)" /> Motivos de Perda (Top 5)</h3>
+                {dashboardData.insights_ia.motivos_perda.length > 0 ? (
+                  <div className="stage-bars">
+                    {dashboardData.insights_ia.motivos_perda.map((m, i) => (
+                      <div key={m.motivo_perda} className="stage-bar-row">
+                        <span title={m.motivo_perda}>{m.motivo_perda}</span>
+                        <div className="stage-bar-track">
+                          <div className="stage-bar-fill" style={{ width: `${Math.max(8, (m.qtd / dashboardData.insights_ia.motivos_perda[0].qtd) * 100)}%`, backgroundColor: 'var(--red)', animationDelay: `${i * 0.06}s` }} />
+                        </div>
+                        <span className="stage-bar-val">{m.qtd}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="cell-empty">Nenhum motivo de perda registrado ainda.</p>
+                )}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="dashboard-grid" aria-busy="true" aria-label="Carregando dashboard">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="metric-card glass-container">
+                  <div className="metric-data">
+                    <div className="skeleton" style={{ height: '12px', width: '120px', marginBottom: '10px' }} />
+                    <div className="skeleton" style={{ height: '30px', width: '150px' }} />
+                  </div>
+                  <div className="metric-icon-wrapper"><div className="skeleton" style={{ width: 48, height: 48, borderRadius: 12 }} /></div>
+                </div>
+              ))}
+              <div className="db-section-large glass-container">
+                <div className="skeleton" style={{ height: '20px', width: '260px', marginBottom: '20px' }} />
+                {Array.from({ length: 5 }).map((_, i) => <div key={i} className="skeleton" style={{ height: '34px', width: '100%', marginBottom: '8px' }} />)}
+              </div>
+              <div className="db-section-large glass-container">
+                <div className="skeleton" style={{ height: '20px', width: '260px', marginBottom: '20px' }} />
+                {Array.from({ length: 5 }).map((_, i) => <div key={i} className="skeleton" style={{ height: '34px', width: '100%', marginBottom: '8px' }} />)}
+              </div>
+            </div>
+          )
         )}
 
         {/* -------------------- TAB: KANBAN BOARD (13 ESTÁGIOS) -------------------- */}
@@ -844,7 +1049,12 @@ function App() {
               })}
             </div>
             <DragOverlay>
-              {activeDragId ? <div className="kanban-card" style={{ opacity: 0.7, padding: '12px' }}>Arraste para mover</div> : null}
+              {(() => {
+                const dragged = leads.find(l => l.id === activeDragId);
+                return dragged ? (
+                  <div className="kanban-card drag-ghost"><KanbanCardBody lead={dragged} /></div>
+                ) : null;
+              })()}
             </DragOverlay>
           </DndContext>
         )}
@@ -931,7 +1141,7 @@ function App() {
                     </p>
                   </div>
                   <div>
-                    <button className="btn btn-secondary" onClick={() => { setSelectedLeadId(lead.id); setActiveDetailTab('producao'); }}>
+                    <button className="btn btn-secondary" onClick={() => { setSelectedLeadId(lead.id); setEditMode(true); }}>
                       Ver Ficha de Produção
                     </button>
                   </div>
@@ -1004,7 +1214,7 @@ function App() {
                   {contextAnalysis && !contextAnalysis.error && (
                     <div className="context-analysis-card">
                       <div className="context-analysis-header">
-                        <Sparkles size={18} color="#829aff" />
+                        <Sparkles size={18} color="var(--trace)" />
                         <span>Análise Contextual da Conversa</span>
                         <span className="context-analysis-cost">
                           {contextAnalysis.custo_centavos > 0 ? `~R$ ${contextAnalysis.custo_centavos.toFixed(4)}` : 'grátis'}
@@ -1013,15 +1223,15 @@ function App() {
 
                       {contextAnalysis.sentimento_geral && (
                         <div className="context-sentiment-badge" style={{
-                          color: contextAnalysis.sentimento_geral === 'frustrado' ? '#dc2626' :
-                                 contextAnalysis.sentimento_geral === 'emergencial' ? '#ea580c' :
-                                 contextAnalysis.sentimento_geral === 'interessado' ? '#16a34a' :
-                                 contextAnalysis.sentimento_geral === 'negociação' ? '#ca8a04' : 'var(--text-muted)'
+                          color: contextAnalysis.sentimento_geral === 'frustrado' ? 'var(--red-bright)' :
+                                 contextAnalysis.sentimento_geral === 'emergencial' ? 'var(--primary-hover)' :
+                                 contextAnalysis.sentimento_geral === 'interessado' ? 'var(--green-bright)' :
+                                 contextAnalysis.sentimento_geral === 'negociação' ? 'var(--color-orcamento)' : 'var(--text-muted)'
                         }}>
-                          {contextAnalysis.sentimento_geral === 'frustrado' && '😤 '}
-                          {contextAnalysis.sentimento_geral === 'emergencial' && '🚨 '}
-                          {contextAnalysis.sentimento_geral === 'interessado' && '✅ '}
-                          {contextAnalysis.sentimento_geral === 'negociação' && '🤝 '}
+                          {contextAnalysis.sentimento_geral === 'frustrado' && <AlertTriangle size={14} />}
+                          {contextAnalysis.sentimento_geral === 'emergencial' && <Siren size={14} />}
+                          {contextAnalysis.sentimento_geral === 'interessado' && <CheckCircle size={14} />}
+                          {contextAnalysis.sentimento_geral === 'negociação' && <Handshake size={14} />}
                           Sentimento geral: {contextAnalysis.sentimento_geral}
                           {contextAnalysis.tempo_decisao && ` · Decisão: ${contextAnalysis.tempo_decisao}`}
                         </div>
@@ -1087,7 +1297,7 @@ function App() {
 
                         {contextAnalysis.riscos && contextAnalysis.riscos.length > 0 && (
                           <div className="context-pattern-card">
-                            <div className="context-pattern-header" style={{ color: '#dc2626' }}>
+                            <div className="context-pattern-header" style={{ color: 'var(--red)' }}>
                               <AlertTriangle size={16} />
                               <span>Riscos</span>
                             </div>
@@ -1103,7 +1313,7 @@ function App() {
 
                         {contextAnalysis.oportunidades && (
                           <div className="context-pattern-card">
-                            <div className="context-pattern-header" style={{ color: '#16a34a' }}>
+                            <div className="context-pattern-header" style={{ color: 'var(--green)' }}>
                               <TrendingUp size={16} />
                               <span>Oportunidades</span>
                             </div>
@@ -1185,115 +1395,93 @@ function App() {
 
         {/* -------------------- TAB: BASE DE CONHECIMENTO IA -------------------- */}
         {currentTab === 'conhecimento' && (
-          <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
-              {/* Form de Nova Regra */}
-              <div className="glass-container" style={{ padding: '20px', borderRadius: '12px' }}>
-                <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary)' }}>
-                  <Plus size={18} /> Adicionar Regra à IA
-                </h3>
-                <form onSubmit={handleCreateConhecimento} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div className="form-group">
-                    <label className="form-label">Categoria</label>
-                    <select
-                      className="form-control"
-                      value={newConhecimentoForm.categoria}
-                      onChange={e => setNewConhecimentoForm({ ...newConhecimentoForm, categoria: e.target.value })}
-                    >
-                      <option value="qualificacao">Qualificação e Triagem</option>
-                      <option value="materiais">Materiais (Alumínio / PVC / Madeira)</option>
-                      <option value="avisos_legais">Termos e Avisos de Medição</option>
-                      <option value="politicas">Políticas, Prazos e Garantia</option>
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Título da Instrução</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="Ex: Triagem de Vãos Requadrados"
-                      value={newConhecimentoForm.titulo}
-                      onChange={e => setNewConhecimentoForm({ ...newConhecimentoForm, titulo: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Conteúdo / Diretriz para a IA</label>
-                    <textarea
-                      className="form-control"
-                      rows={5}
-                      placeholder="Descreva exatamente como a IA deve orientar o cliente..."
-                      value={newConhecimentoForm.conteudo}
-                      onChange={e => setNewConhecimentoForm({ ...newConhecimentoForm, conteudo: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <button type="submit" className="btn btn-primary" style={{ marginTop: '8px' }}>
-                    <Plus size={16} /> Salvar no Banco de Conhecimento
-                  </button>
-                </form>
-              </div>
-
-              {/* Lista de Regras */}
-              <div className="glass-container" style={{ padding: '20px', borderRadius: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                  <h3 style={{ fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Sparkles size={18} color="#4361ee" /> Diretrizes Ativas da IA ({conhecimentoList.length})
-                  </h3>
-                  <button className="btn btn-sm btn-secondary" onClick={fetchConhecimento}>
-                    <RefreshCw size={14} /> Atualizar
-                  </button>
+          <div className="kb-container">
+            {/* Form de Nova Regra */}
+            <div className="glass-container kb-panel">
+              <h3 className="kb-panel-title">
+                <Plus size={18} /> Adicionar Regra à IA
+              </h3>
+              <form onSubmit={handleCreateConhecimento} className="kb-form">
+                <div className="form-group">
+                  <label className="form-label">Categoria</label>
+                  <select
+                    className="form-control"
+                    value={newConhecimentoForm.categoria}
+                    onChange={e => setNewConhecimentoForm({ ...newConhecimentoForm, categoria: e.target.value })}
+                  >
+                    <option value="qualificacao">Qualificação e Triagem</option>
+                    <option value="materiais">Materiais (Alumínio / PVC / Madeira)</option>
+                    <option value="avisos_legais">Termos e Avisos de Medição</option>
+                    <option value="politicas">Políticas, Prazos e Garantia</option>
+                  </select>
                 </div>
+                <div className="form-group">
+                  <label className="form-label">Título da Instrução</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Ex: Triagem de Vãos Requadrados"
+                    value={newConhecimentoForm.titulo}
+                    onChange={e => setNewConhecimentoForm({ ...newConhecimentoForm, titulo: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Conteúdo / Diretriz para a IA</label>
+                  <textarea
+                    className="form-control"
+                    rows={5}
+                    placeholder="Descreva exatamente como a IA deve orientar o cliente..."
+                    value={newConhecimentoForm.conteudo}
+                    onChange={e => setNewConhecimentoForm({ ...newConhecimentoForm, conteudo: e.target.value })}
+                    required
+                  />
+                </div>
+                <button type="submit" className="btn btn-primary">
+                  <Plus size={16} /> Salvar no Banco de Conhecimento
+                </button>
+              </form>
+            </div>
 
-                {conhecimentoList.length === 0 ? (
-                  <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '32px 0' }}>
-                    Nenhuma regra cadastrada na Base de Conhecimento.
-                  </p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {conhecimentoList.map(item => (
-                      <div
-                        key={item.id}
-                        style={{
-                          padding: '14px 16px',
-                          borderRadius: '8px',
-                          background: 'rgba(255, 255, 255, 0.03)',
-                          border: '1px solid var(--border-color)',
-                          position: 'relative'
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span
-                              className="tag"
-                              style={{
-                                fontSize: '0.7rem',
-                                textTransform: 'uppercase',
-                                background: item.categoria === 'qualificacao' ? 'rgba(67,97,238,0.2)' : item.categoria === 'materiais' ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)',
-                                color: item.categoria === 'qualificacao' ? '#4361ee' : item.categoria === 'materiais' ? '#10b981' : '#f59e0b'
-                              }}
-                            >
-                              {item.categoria}
-                            </span>
-                            <strong style={{ fontSize: '0.95rem' }}>{item.titulo}</strong>
-                          </div>
-                          <button
-                            className="btn-icon"
-                            style={{ color: '#ef4444', padding: '2px' }}
-                            title="Excluir Regra"
-                            onClick={() => handleDeleteConhecimento(item.id)}
-                          >
-                            <X size={16} />
-                          </button>
-                        </div>
-                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, lineHeight: '1.4' }}>
-                          {item.conteudo}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
+            {/* Lista de Regras */}
+            <div className="glass-container kb-panel">
+              <div className="kb-item-head">
+                <h3 className="kb-panel-title" style={{ color: 'var(--trace-strong)' }}>
+                  <Sparkles size={18} /> Diretrizes Ativas da IA ({conhecimentoList.length})
+                </h3>
+                <button className="btn btn-sm btn-secondary" onClick={fetchConhecimento}>
+                  <RefreshCw size={14} /> Atualizar
+                </button>
               </div>
+
+              {conhecimentoList.length === 0 ? (
+                <p className="cell-empty">Nenhuma regra cadastrada na Base de Conhecimento.</p>
+              ) : (
+                <div className="kb-list">
+                  {conhecimentoList.map(item => (
+                    <div key={item.id} className="kb-item">
+                      <div className="kb-item-head">
+                        <div className="kb-item-head-left">
+                          <span className={`kb-tag kb-tag-${item.categoria}`}>{item.categoria}</span>
+                          <strong className="kb-item-title">{item.titulo}</strong>
+                        </div>
+                        <button
+                          className="btn-icon"
+                          style={{ color: 'var(--red-bright)', padding: '2px' }}
+                          aria-label="Excluir Regra"
+                          title="Excluir Regra"
+                          onClick={() => handleDeleteConhecimento(item.id)}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                      <p className="kb-item-body">
+                        {item.conteudo}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1307,7 +1495,7 @@ function App() {
               <div className="modal-title">
                 <h2>Registrar Nova Oportunidade / Obra</h2>
               </div>
-              <button className="btn-icon" onClick={() => setIsCreateModalOpen(false)}>✕</button>
+              <button className="btn-icon" onClick={() => setIsCreateModalOpen(false)} aria-label="Fechar"><X size={18} /></button>
             </div>
             <form onSubmit={handleCreateLead} style={{ padding: '24px' }}>
               <div className="form-grid">
@@ -1449,7 +1637,7 @@ function App() {
                 <button className="btn btn-secondary" style={{ borderColor: 'var(--color-perdido)', color: 'var(--color-perdido)', fontSize: '0.8rem' }} onClick={() => handleDeleteLead(editForm.id)}>
                   <Trash2 size={14} />
                 </button>
-                <button className="btn-icon" onClick={() => { setSelectedLeadId(null); setLeadDetail(null); }}>✕</button>
+                <button className="btn-icon" onClick={() => { setSelectedLeadId(null); setLeadDetail(null); }} aria-label="Fechar"><X size={18} /></button>
               </div>
             </div>
 
@@ -1671,9 +1859,11 @@ function App() {
                               <span style={{ color: 'var(--text-muted)', marginLeft: '8px' }}>{comp.responsavel}</span>
                             </div>
                             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                              <span style={{ fontSize: '0.8rem', color: comp.status === 'Agendado' ? '#ffb703' : '#10b981' }}>{comp.status}</span>
+                              <span style={{ fontSize: '0.8rem', color: comp.status === 'Agendado' ? 'var(--color-orcamento)' : 'var(--green-bright)' }}>{comp.status}</span>
                               {comp.status === 'Agendado' && (
-                                <button className="btn btn-secondary" style={{ padding: '2px 8px', fontSize: '0.7rem' }} onClick={() => handleUpdateCompromissoStatus(comp.id, 'Realizado')}>✓</button>
+                                <button className="btn btn-sm btn-secondary" aria-label="Marcar como realizado" onClick={() => handleUpdateCompromissoStatus(comp.id, 'Realizado')}>
+                                  <CheckCircle size={12} /> Realizado
+                                </button>
                               )}
                             </div>
                           </div>
@@ -1750,7 +1940,7 @@ function App() {
 
                   {/* Bloco 2: Resumo da IA */}
                   <div className="lead-block lead-ia-block">
-                    <div className="block-header"><Sparkles size={22} color="#829aff" /><h3>Resumo da IA</h3></div>
+                    <div className="block-header"><Sparkles size={22} color="var(--trace)" /><h3>Resumo da IA</h3></div>
                     <div className="ia-summary-text">{editForm.resumo_ia || 'Nenhum resumo disponível. As análises da IA aparecerão aqui após o n8n processar as conversas do WhatsApp.'}</div>
                     <div className="ia-meta-row">
                       <div className="ia-meta-item"><span className="ia-meta-label">Próxima Ação</span><span>{editForm.proxima_acao || 'Aguardando análise da IA'}</span></div>
@@ -1761,8 +1951,8 @@ function App() {
 
                   {/* Bloco 3: Ficha de Qualificação Multimaterial (ABNT NBR 10821) */}
                   <div className={`accordion-panel ${expandedPanels.qualificacao ? 'expanded' : ''}`} style={{ marginBottom: '16px' }}>
-                    <div className="accordion-header" onClick={() => togglePanel('qualificacao')}>
-                      <div className="accordion-title"><ShieldCheck size={18} color="#06d6a0" /><span>Ficha de Qualificação Multimaterial & Alertas de Obra</span></div>
+                    <div className="accordion-header" role="button" tabIndex={0} aria-expanded={expandedPanels.qualificacao} aria-controls="acc-qualificacao" onClick={() => togglePanel('qualificacao')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); togglePanel('qualificacao'); } }}>
+                      <div className="accordion-title"><ShieldCheck size={18} color="var(--green-bright)" /><span>Ficha de Qualificação Multimaterial & Alertas de Obra</span></div>
                       {expandedPanels.qualificacao ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                     </div>
                     {expandedPanels.qualificacao && (
@@ -1778,21 +1968,25 @@ function App() {
                           {editForm.material && editForm.material.toLowerCase().includes('madeira') && (
                             <>
                               <div className="tech-item"><span className="tech-label">Classificação da Madeira</span><span className="tech-value">{editForm.classificacao_madeira || 'Não informada'}</span></div>
-                              <div className="tech-item"><span className="tech-label">Selo Sustentável</span><span className="tech-value">{editForm.certificacao_fsc ? '🟢 Certificação FSC / DOF Ativo' : '🔴 Sem Selo FSC'}</span></div>
+                              <div className="tech-item"><span className="tech-label">Selo Sustentável</span><span className="tech-value">
+                                <span className={`tag ${editForm.certificacao_fsc ? 'tag-temp-frio' : 'tag-temp-quente'}`} style={{ fontSize: '0.72rem' }}>
+                                  {editForm.certificacao_fsc ? 'Certificação FSC / DOF Ativo' : 'Sem Selo FSC'}
+                                </span>
+                              </span></div>
                             </>
                           )}
                         </div>
 
                         {/* Status de Alertas Rápidos de Qualificação */}
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
+                        <div className="qual-alerts">
                           <span className={`tag ${editForm.vaos_requadrados ? 'tag-temp-frio' : 'tag-temp-quente'}`} style={{ fontSize: '0.72rem' }}>
-                            {editForm.vaos_requadrados ? '✓ Vãos Requadrados' : '⚠ Vãos NÃO Requadrados'}
+                            {editForm.vaos_requadrados ? '+ Vãos Requadrados' : '! Vãos NÃO Requadrados'}
                           </span>
                           <span className={`tag ${editForm.nivel_piso_definido ? 'tag-temp-frio' : 'tag-temp-quente'}`} style={{ fontSize: '0.72rem' }}>
-                            {editForm.nivel_piso_definido ? '✓ Nível Soleira OK' : '⚠ Nível Piso Pendente'}
+                            {editForm.nivel_piso_definido ? '+ Nível Soleira OK' : '! Nível Piso Pendente'}
                           </span>
                           <span className={`tag ${editForm.aviso_responsabilidade_aceito ? 'tag-temp-frio' : 'tag-temp-morno'}`} style={{ fontSize: '0.72rem' }}>
-                            {editForm.aviso_responsabilidade_aceito ? '🛡 Resp. Metragem Aceito' : '📋 Enviar Aviso de Resp. Metragem'}
+                            {editForm.aviso_responsabilidade_aceito ? 'OK Resp. Metragem Aceito' : 'Enviar Aviso de Resp. Metragem'}
                           </span>
                         </div>
                       </div>
@@ -1803,8 +1997,8 @@ function App() {
                   <div className="lead-accordions">
                     {/* Conversa */}
                     <div className={`accordion-panel ${expandedPanels.conversa ? 'expanded' : ''}`}>
-                      <div className="accordion-header" onClick={() => togglePanel('conversa')}>
-                        <div className="accordion-title"><MessageSquare size={18} color="#4361ee" /><span>Histórico de Conversa ({leadDetail.mensagens?.length || 0})</span></div>
+                      <div className="accordion-header" role="button" tabIndex={0} aria-expanded={expandedPanels.conversa} aria-controls="acc-conversa" onClick={() => togglePanel('conversa')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); togglePanel('conversa'); } }}>
+                        <div className="accordion-title"><MessageSquare size={18} color="var(--trace)" /><span>Histórico de Conversa ({leadDetail.mensagens?.length || 0})</span></div>
                         {expandedPanels.conversa ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                       </div>
                       {expandedPanels.conversa && (
@@ -1824,7 +2018,7 @@ function App() {
 
                           <div className="chat-quick-actions">
                             <button className="chat-quick-action" onClick={() => analyzeLead(editForm.id)} disabled={analyzing}>
-                              {analyzing ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} color="#4361ee" />}
+                              {analyzing ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} color="var(--trace)" />}
                               <span>{analyzing ? 'Analisando...' : 'Pedir Sugestão à IA'}</span>
                             </button>
                             <button className="chat-quick-action" onClick={() => setReplyText(`Olá ${editForm.nome_cliente}! `)}>
@@ -1857,11 +2051,11 @@ function App() {
                           </div>
 
                           {editForm.resposta_sugerida ? (
-                            <div className="ia-suggestion-banner" style={{ background: 'rgba(67, 97, 238, 0.08)', border: '1px solid rgba(67, 97, 238, 0.25)', borderRadius: '10px', padding: '14px', marginBottom: '12px' }}>
+                            <div className="ia-suggestion-banner" style={{ background: 'var(--trace-glow)', border: '1px solid rgba(122, 162, 255, 0.25)', borderRadius: '10px', padding: '14px', marginBottom: '12px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <Sparkles size={16} color="#4361ee" />
-                                  <strong style={{ fontSize: '0.88rem', color: '#4361ee' }}>Resposta Sugerida pela IA (Base de Conhecimento)</strong>
+                                  <Sparkles size={16} color="var(--trace)" />
+                                  <strong style={{ fontSize: '0.88rem', color: 'var(--trace-strong)' }}>Resposta Sugerida pela IA (Base de Conhecimento)</strong>
                                 </div>
                                 <button className="btn btn-sm btn-secondary" style={{ fontSize: '0.75rem', padding: '3px 8px' }} onClick={() => analyzeLead(editForm.id)} disabled={analyzing}>
                                   {analyzing ? <Loader2 size={12} className="spin" /> : <RefreshCw size={12} />} Regerar
@@ -1879,7 +2073,7 @@ function App() {
                           ) : (
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255, 255, 255, 0.02)', border: '1px dashed var(--border-color)', borderRadius: '10px', padding: '12px', marginBottom: '12px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                <Sparkles size={16} color="#829aff" />
+                                <Sparkles size={16} color="var(--trace)" />
                                 <span>Solicite à IA uma sugestão contextual de resposta baseada na Base de Conhecimento.</span>
                               </div>
                               <button className="btn btn-sm btn-secondary" onClick={() => analyzeLead(editForm.id)} disabled={analyzing}>
@@ -1906,8 +2100,8 @@ function App() {
 
                     {/* Timeline */}
                     <div className={`accordion-panel ${expandedPanels.timeline ? 'expanded' : ''}`}>
-                      <div className="accordion-header" onClick={() => togglePanel('timeline')}>
-                        <div className="accordion-title"><History size={18} color="#f77f00" /><span>Linha do Tempo ({timelineEvents.length} eventos)</span></div>
+                      <div className="accordion-header" role="button" tabIndex={0} aria-expanded={expandedPanels.timeline} aria-controls="acc-timeline" onClick={() => togglePanel('timeline')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); togglePanel('timeline'); } }}>
+                        <div className="accordion-title"><History size={18} color="var(--primary-hover)" /><span>Linha do Tempo ({timelineEvents.length} eventos)</span></div>
                         {expandedPanels.timeline ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                       </div>
                       {expandedPanels.timeline && (
@@ -1933,8 +2127,8 @@ function App() {
 
                     {/* Insights */}
                     <div className={`accordion-panel ${expandedPanels.insights ? 'expanded' : ''}`}>
-                      <div className="accordion-header" onClick={() => togglePanel('insights')}>
-                        <div className="accordion-title"><Lightbulb size={18} color="#ffb703" /><span>Insights & Inteligência</span></div>
+                      <div className="accordion-header" role="button" tabIndex={0} aria-expanded={expandedPanels.insights} aria-controls="acc-insights" onClick={() => togglePanel('insights')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); togglePanel('insights'); } }}>
+                        <div className="accordion-title"><Lightbulb size={18} color="var(--color-orcamento)" /><span>Insights & Inteligência</span></div>
                         {expandedPanels.insights ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                       </div>
                       {expandedPanels.insights && (
@@ -1950,7 +2144,7 @@ function App() {
                           {leadAnalysis && !leadAnalysis.error && (
                             <div className="lead-block lead-ia-block" style={{ padding: '14px', marginBottom: '12px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                                <Sparkles size={18} color="#829aff" />
+                                <Sparkles size={18} color="var(--trace)" />
                                 <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '0.9rem' }}>Análise da IA</span>
                                 <span style={{ marginLeft: 'auto', fontSize: '0.68rem', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>
                                   {leadAnalysis.custo_centavos > 0 ? `~R$ ${leadAnalysis.custo_centavos.toFixed(4)}` : 'grátis'}
@@ -1959,7 +2153,7 @@ function App() {
                               <div className="ia-meta-row" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '8px', marginBottom: '10px' }}>
                                 <div className="ia-meta-item">
                                   <span className="ia-meta-label">Sentimento</span>
-                                  <span style={{ fontWeight: 600, fontSize: '0.85rem', color: leadAnalysis.sentimento === 'frustrado' ? '#dc2626' : leadAnalysis.sentimento === 'emergencial' ? '#ea580c' : leadAnalysis.sentimento === 'interessado' ? '#16a34a' : leadAnalysis.sentimento === 'negociação' ? '#ca8a04' : 'var(--text-muted)' }}>
+                                  <span style={{ fontWeight: 600, fontSize: '0.85rem', color: leadAnalysis.sentimento === 'frustrado' ? 'var(--red-bright)' : leadAnalysis.sentimento === 'emergencial' ? 'var(--primary-hover)' : leadAnalysis.sentimento === 'interessado' ? 'var(--green-bright)' : leadAnalysis.sentimento === 'negociação' ? 'var(--color-orcamento)' : 'var(--text-muted)' }}>
                                     {leadAnalysis.sentimento || '—'}
                                   </span>
                                 </div>
@@ -1976,12 +2170,12 @@ function App() {
                                   </span>
                                 </div>
                               </div>
-                              <div style={{ fontSize: '0.83rem', lineHeight: '1.6', color: '#e7e5e4', background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: 'var(--radius-sm)', marginBottom: '8px', borderLeft: '3px solid #d97706' }}>
+                              <div style={{ fontSize: '0.83rem', lineHeight: '1.6', color: 'var(--text-main)', background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: 'var(--radius-sm)', marginBottom: '8px', borderLeft: '3px solid var(--trace)' }}>
                                 {leadAnalysis.resumo || 'Resumo não disponível'}
                               </div>
                               {leadAnalysis.resposta_sugerida && (
                                 <div className="ia-suggestion-banner" style={{ margin: 0 }}>
-                                  <Sparkles size={14} color="#829aff" />
+                                  <Sparkles size={14} color="var(--trace)" />
                                   <span className="ia-suggestion-label">Responder:</span>
                                   <span className="ia-suggestion-text">{leadAnalysis.resposta_sugerida}</span>
                                   <button className="btn btn-sm" onClick={() => setReplyText(leadAnalysis.resposta_sugerida)}>Usar</button>
@@ -1998,10 +2192,10 @@ function App() {
 
                           {leadInsights ? (
                             <div className="insights-grid">
-                              <div className="insight-card"><div className="insight-icon" style={{ backgroundColor: 'rgba(6, 214, 160, 0.1)', color: '#06d6a0' }}>{leadInsights.lead_recorrente ? <CheckCircle size={20} /> : <User size={20} />}</div><div><div className="insight-label">Tipo de Lead</div><div className="insight-value">{leadInsights.lead_recorrente ? 'Recorrente' : 'Novo'}</div></div></div>
-                              <div className="insight-card"><div className="insight-icon" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}><MessageSquare size={20} /></div><div><div className="insight-label">Total de Mensagens</div><div className="insight-value">{leadInsights.total_mensagens} msgs</div></div></div>
-                              <div className="insight-card"><div className="insight-icon" style={{ backgroundColor: leadInsights.risco_esfriar ? 'rgba(239, 71, 111, 0.1)' : 'rgba(6, 214, 160, 0.1)', color: leadInsights.risco_esfriar ? '#ef476f' : '#06d6a0' }}><AlertTriangle size={20} /></div><div><div className="insight-label">Risco de Esfriar</div><div className="insight-value">{leadInsights.risco_esfriar ? 'Sim — ' + leadInsights.dias_ultimo_contato + ' dias' : 'Baixo'}</div></div></div>
-                              <div className="insight-card"><div className="insight-icon" style={{ backgroundColor: 'rgba(247, 127, 0, 0.1)', color: '#f77f00' }}><Calendar size={20} /></div><div><div className="insight-label">Visitas Agendadas</div><div className="insight-value">{leadInsights.total_visitas_agendadas} visita(s)</div></div></div>
+                              <div className="insight-card"><div className="insight-icon" style={{ backgroundColor: 'rgba(47, 158, 107, 0.12)', color: 'var(--green-bright)' }}>{leadInsights.lead_recorrente ? <CheckCircle size={20} /> : <User size={20} />}</div><div><div className="insight-label">Tipo de Lead</div><div className="insight-value">{leadInsights.lead_recorrente ? 'Recorrente' : 'Novo'}</div></div></div>
+                              <div className="insight-card"><div className="insight-icon" style={{ backgroundColor: 'var(--trace-glow)', color: 'var(--trace-strong)' }}><MessageSquare size={20} /></div><div><div className="insight-label">Total de Mensagens</div><div className="insight-value">{leadInsights.total_mensagens} msgs</div></div></div>
+                              <div className="insight-card"><div className="insight-icon" style={{ backgroundColor: leadInsights.risco_esfriar ? 'rgba(217, 83, 63, 0.12)' : 'rgba(47, 158, 107, 0.12)', color: leadInsights.risco_esfriar ? 'var(--red-bright)' : 'var(--green-bright)' }}><AlertTriangle size={20} /></div><div><div className="insight-label">Risco de Esfriar</div><div className="insight-value">{leadInsights.risco_esfriar ? 'Sim — ' + leadInsights.dias_ultimo_contato + ' dias' : 'Baixo'}</div></div></div>
+                              <div className="insight-card"><div className="insight-icon" style={{ backgroundColor: 'rgba(217, 119, 6, 0.12)', color: 'var(--primary-hover)' }}><Calendar size={20} /></div><div><div className="insight-label">Visitas Agendadas</div><div className="insight-value">{leadInsights.total_visitas_agendadas} visita(s)</div></div></div>
                             </div>
                           ) : (
                             <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '16px' }}>Carregando insights...</p>
@@ -2013,7 +2207,7 @@ function App() {
 
                   {/* Bloco 7: Dados Estruturados */}
                   <div className="lead-block lead-data-block">
-                    <div className="block-header"><Layers size={18} color="#4361ee" /><h3>Dados Técnicos</h3></div>
+                    <div className="block-header"><Layers size={18} color="var(--trace)" /><h3>Dados Técnicos</h3></div>
                     <div className="tech-data-grid">
                       <div className="tech-item"><span className="tech-label">Tipo de Serviço</span><span className="tech-value">{editForm.tipo_servico || '—'}</span></div>
                       <div className="tech-item"><span className="tech-label">Material</span><span className="tech-value">{editForm.material || '—'}</span></div>
@@ -2038,6 +2232,34 @@ function App() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast de feedback */}
+      {toast && (
+        <div className="toast-stack" role="status" aria-live="polite">
+          <div className={`toast ${toast.type}`}>
+            {toast.type === 'ok' ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
+            {toast.msg}
+          </div>
+        </div>
+      )}
+
+      {/* Confirmação in-app */}
+      {confirmItem && (
+        <div className="confirm-overlay">
+          <div className="confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+            <div className="confirm-title" id="confirm-title">
+              <AlertTriangle size={18} color="var(--red)" /> Confirmar ação
+            </div>
+            <p className="confirm-msg">{confirmItem.message}</p>
+            <div className="confirm-actions">
+              <button className="btn btn-secondary" onClick={() => setConfirmItem(null)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={() => { const fn = confirmItem.onConfirm; setConfirmItem(null); if (fn) fn(); }}>
+                Confirmar
+              </button>
             </div>
           </div>
         </div>
