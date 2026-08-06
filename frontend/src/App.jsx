@@ -867,153 +867,182 @@ function App() {
         {currentTab === 'dashboard' && (
           dashboardData ? (
             <div className="dashboard-grid">
-              <MetricGauge
-                label="Pipeline Estimado"
-                value={dashboardData.pipeline.valor_total_estimado}
-                format={(v) => formatCurrency(v)}
-                icon={<DollarSign size={24} />}
-                iconBg="var(--trace-glow)"
-                iconColor="var(--trace)"
-              />
+              <div className="dashboard-metrics-row">
+                <MetricGauge
+                  label="Pipeline Estimado"
+                  value={dashboardData.pipeline.valor_total_estimado}
+                  format={(v) => formatCurrency(v)}
+                  icon={<DollarSign size={22} />}
+                  iconBg="var(--trace-glow)"
+                  iconColor="var(--trace)"
+                />
 
-              <MetricGauge
-                label="Faturamento Fechado"
-                value={dashboardData.pipeline.valor_total_fechado}
-                format={(v) => formatCurrency(v)}
-                icon={<CheckCircle size={24} />}
-                iconBg="rgba(47, 158, 107, 0.14)"
-                iconColor="var(--green-bright)"
-              />
+                <MetricGauge
+                  label="Faturamento Fechado"
+                  value={dashboardData.pipeline.valor_total_fechado}
+                  format={(v) => formatCurrency(v)}
+                  icon={<CheckCircle size={22} />}
+                  iconBg="rgba(47, 158, 107, 0.14)"
+                  iconColor="var(--green-bright)"
+                />
 
-              <MetricGauge
-                label="Conversão (Fechados)"
-                value={dashboardData.pipeline.fechados_qtd + dashboardData.pipeline.perdidos_qtd > 0
-                  ? (dashboardData.pipeline.fechados_qtd / (dashboardData.pipeline.fechados_qtd + dashboardData.pipeline.perdidos_qtd)) * 100
-                  : 100}
-                format={(v) => `${Math.round(v)}%`}
-                icon={<Layers size={24} />}
-                iconBg="rgba(122, 162, 255, 0.14)"
-                iconColor="var(--color-novo)"
-              />
+                <MetricGauge
+                  label="Conversão (Fechados)"
+                  value={dashboardData.pipeline.fechados_qtd + dashboardData.pipeline.perdidos_qtd > 0
+                    ? (dashboardData.pipeline.fechados_qtd / (dashboardData.pipeline.fechados_qtd + dashboardData.pipeline.perdidos_qtd)) * 100
+                    : 100}
+                  format={(v) => `${Math.round(v)}%`}
+                  icon={<Layers size={22} />}
+                  iconBg="rgba(122, 162, 255, 0.14)"
+                  iconColor="var(--color-novo)"
+                />
 
-              <MetricGauge
-                label="Ordens de Produção"
-                value={dashboardData.producao_ativa.length}
-                format={(v) => `${Math.round(v)} ativas`}
-                icon={<Wrench size={24} />}
-                iconBg="rgba(245, 165, 36, 0.14)"
-                iconColor="var(--primary-hover)"
-              />
+                <MetricGauge
+                  label="Ordens de Produção"
+                  value={dashboardData.producao_ativa.length}
+                  format={(v) => `${Math.round(v)} ativas`}
+                  icon={<Wrench size={22} />}
+                  iconBg="rgba(245, 165, 36, 0.14)"
+                  iconColor="var(--primary-hover)"
+                />
+              </div>
 
               {/* Leads Parados (Alerta IA) */}
               <div className="db-section-large glass-container">
-                <h3><AlertTriangle size={20} color="var(--red)" /> Alertas de Ação da IA (Leads Parados/Esfriando)</h3>
-                <table className="db-table">
-                  <thead>
-                    <tr>
-                      <th>Cliente</th>
-                      <th>Fase Atual</th>
-                      <th>Última Atualização</th>
-                      <th>Temperatura</th>
-                      <th>Próxima Ação Sugerida pela IA</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dashboardData.insights_ia.leads_parados.length > 0 ? (
-                      dashboardData.insights_ia.leads_parados.map(lead => (
-                        <tr key={lead.id} className="row-click" onClick={() => setSelectedLeadId(lead.id)}>
-                          <td><strong>{lead.nome_cliente}</strong></td>
-                          <td>{lead.status_funil}</td>
-                          <td>{new Date(lead.updated_at).toLocaleDateString('pt-BR')}</td>
-                          <td>
-                            <span className={`tag tag-temp-${lead.temperatura_lead?.toLowerCase()}`}>
-                              {lead.temperatura_lead}
-                            </span>
-                          </td>
-                          <td className="cell-ia">
-                            <Sparkles size={14} color="var(--trace)" /> {lead.proxima_acao || 'Solicitar fotos complementares ou agendar medição.'}
-                          </td>
+                <div className="db-section-header">
+                  <h3><AlertTriangle size={18} color="var(--red)" /> Alertas de Ação da IA (Leads Parados/Esfriando)</h3>
+                  <span className="badge-pill" style={{ background: 'rgba(217, 83, 63, 0.15)', color: 'var(--red-bright)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.68rem', fontFamily: 'var(--font-mono)' }}>
+                    {dashboardData.insights_ia.leads_parados.length} ATENÇÃO
+                  </span>
+                </div>
+                <div className="db-section-body">
+                  <div className="db-table-wrapper">
+                    <table className="db-table">
+                      <thead>
+                        <tr>
+                          <th>Cliente</th>
+                          <th>Fase Atual</th>
+                          <th>Última Atualização</th>
+                          <th>Temperatura</th>
+                          <th>Próxima Ação Sugerida pela IA</th>
                         </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="5" className="cell-empty">Nenhum lead com alerta de inatividade! Operação em dia.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                      </thead>
+                      <tbody>
+                        {dashboardData.insights_ia.leads_parados.length > 0 ? (
+                          dashboardData.insights_ia.leads_parados.map(lead => (
+                            <tr key={lead.id} className="row-click" onClick={() => setSelectedLeadId(lead.id)}>
+                              <td><strong>{lead.nome_cliente}</strong></td>
+                              <td><span className="tag tag-service" style={{ background: 'rgba(255,255,255,0.06)' }}>{lead.status_funil}</span></td>
+                              <td>{new Date(lead.updated_at).toLocaleDateString('pt-BR')}</td>
+                              <td>
+                                <span className={`tag tag-temp-${lead.temperatura_lead?.toLowerCase()}`}>
+                                  {lead.temperatura_lead}
+                                </span>
+                              </td>
+                              <td className="cell-ia">
+                                <Sparkles size={14} color="var(--trace)" style={{ display: 'inline', marginRight: '6px' }} />
+                                {lead.proxima_acao || 'Solicitar fotos complementares ou agendar medição.'}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="5" className="cell-empty">Nenhum lead com alerta de inatividade! Operação em dia.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
 
               {/* Compromissos da Semana */}
               <div className="db-section-large glass-container">
-                <h3><Calendar size={20} color="var(--primary)" /> Próximas Medições & Instalações</h3>
-                <table className="db-table">
-                  <thead>
-                    <tr>
-                      <th>Tipo</th>
-                      <th>Cliente</th>
-                      <th>Data & Hora</th>
-                      <th>Responsável</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dashboardData.compromissos_proximos.length > 0 ? (
-                      dashboardData.compromissos_proximos.map(comp => (
-                        <tr key={comp.id} className="row-click" onClick={() => setSelectedLeadId(comp.lead_id)}>
-                          <td>
-                            <span className={`tag ${comp.tipo === 'Medição' ? 'tag-temp-morno' : 'tag-service'}`}>
-                              {comp.tipo}
-                            </span>
-                          </td>
-                          <td>{comp.nome_cliente}</td>
-                          <td>{new Date(comp.data_hora).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</td>
-                          <td>{comp.responsavel || 'Não designado'}</td>
-                          <td>{comp.status}</td>
+                <div className="db-section-header">
+                  <h3><Calendar size={18} color="var(--primary)" /> Próximas Medições & Instalações</h3>
+                  <span className="badge-pill" style={{ background: 'rgba(217, 119, 6, 0.15)', color: 'var(--primary-hover)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.68rem', fontFamily: 'var(--font-mono)' }}>
+                    AGENDA TÉCNICA
+                  </span>
+                </div>
+                <div className="db-section-body">
+                  <div className="db-table-wrapper">
+                    <table className="db-table">
+                      <thead>
+                        <tr>
+                          <th>Tipo</th>
+                          <th>Cliente</th>
+                          <th>Data & Hora</th>
+                          <th>Responsável</th>
+                          <th>Status</th>
                         </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="5" className="cell-empty">Sem visitas agendadas para os próximos dias.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                      </thead>
+                      <tbody>
+                        {dashboardData.compromissos_proximos.length > 0 ? (
+                          dashboardData.compromissos_proximos.map(comp => (
+                            <tr key={comp.id} className="row-click" onClick={() => setSelectedLeadId(comp.lead_id)}>
+                              <td>
+                                <span className={`tag ${comp.tipo === 'Medição' ? 'tag-temp-morno' : 'tag-service'}`}>
+                                  {comp.tipo}
+                                </span>
+                              </td>
+                              <td><strong>{comp.nome_cliente}</strong></td>
+                              <td>{new Date(comp.data_hora).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                              <td>{comp.responsavel || 'Não designado'}</td>
+                              <td><span className="tag" style={{ background: 'rgba(255,255,255,0.06)' }}>{comp.status}</span></td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="5" className="cell-empty">Sem visitas agendadas para os próximos dias.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
 
               {/* Distribuição do Funil */}
               <div className="db-section-large glass-container">
-                <h3><BarChart3 size={20} color="var(--trace)" /> Distribuição do Funil — Obras por Estágio</h3>
-                <div className="chart-plates">
-                  <div className="chart-block">
-                    <h4>Unidades por estágio</h4>
-                    <StageBars counts={stageCounts} />
-                  </div>
-                  <div className="chart-block">
-                    <h4>Zonas do ciclo de obra</h4>
-                    <ZoneStrip counts={stageCounts} />
+                <div className="db-section-header">
+                  <h3><BarChart3 size={18} color="var(--trace)" /> Distribuição do Funil — Obras por Estágio</h3>
+                </div>
+                <div className="db-section-body">
+                  <div className="chart-plates">
+                    <div className="chart-block">
+                      <h4>Unidades por estágio</h4>
+                      <StageBars counts={stageCounts} />
+                    </div>
+                    <div className="chart-block">
+                      <h4>Zonas do ciclo de obra</h4>
+                      <ZoneStrip counts={stageCounts} />
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Motivos de Perda */}
               <div className="db-section-large glass-container">
-                <h3><TrendingUp size={20} color="var(--red)" /> Motivos de Perda (Top 5)</h3>
-                {dashboardData.insights_ia.motivos_perda.length > 0 ? (
-                  <div className="stage-bars">
-                    {dashboardData.insights_ia.motivos_perda.map((m, i) => (
-                      <div key={m.motivo_perda} className="stage-bar-row">
-                        <span title={m.motivo_perda}>{m.motivo_perda}</span>
-                        <div className="stage-bar-track">
-                          <div className="stage-bar-fill" style={{ width: `${Math.max(8, (m.qtd / dashboardData.insights_ia.motivos_perda[0].qtd) * 100)}%`, backgroundColor: 'var(--red)', animationDelay: `${i * 0.06}s` }} />
+                <div className="db-section-header">
+                  <h3><TrendingUp size={18} color="var(--red)" /> Motivos de Perda (Top 5)</h3>
+                </div>
+                <div className="db-section-body">
+                  {dashboardData.insights_ia.motivos_perda.length > 0 ? (
+                    <div className="stage-bars">
+                      {dashboardData.insights_ia.motivos_perda.map((m, i) => (
+                        <div key={m.motivo_perda} className="stage-bar-row">
+                          <span title={m.motivo_perda}>{m.motivo_perda}</span>
+                          <div className="stage-bar-track">
+                            <div className="stage-bar-fill" style={{ width: `${Math.max(8, (m.qtd / dashboardData.insights_ia.motivos_perda[0].qtd) * 100)}%`, backgroundColor: 'var(--red)', animationDelay: `${i * 0.06}s` }} />
+                          </div>
+                          <span className="stage-bar-val">{m.qtd}</span>
                         </div>
-                        <span className="stage-bar-val">{m.qtd}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="cell-empty">Nenhum motivo de perda registrado ainda.</p>
-                )}
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="cell-empty">Nenhum motivo de perda registrado ainda.</p>
+                  )}
+                </div>
               </div>
             </div>
           ) : (
