@@ -40,7 +40,7 @@ import {
 
 const API_URL = import.meta.env.DEV ? 'http://localhost:5000/api' : (import.meta.env.VITE_API_URL || '/api');
 
-// Lista das 13 fases do funil da serralheria
+// Lista das 13 fases do funil de esquadrias
 const COLUMNS = [
   { id: 'Novo lead', label: 'Novo Lead', color: 'var(--color-novo)' },
   { id: 'Contato iniciado', label: 'Contato Iniciado', color: 'var(--color-novo)' },
@@ -77,10 +77,10 @@ function App() {
     prazo_desejado: '',
     complexidade: 'Média',
     valor_estimado: 0,
-    tipo_servico: 'Portão',
-    material: 'Alumínio',
+    tipo_servico: 'Janela de Alumínio',
+    material: 'Alumínio (Linha Suprema)',
     medidas_brutas: '',
-    cor_acabamento: 'Preto',
+    cor_acabamento: 'Preto Anodizado',
     necessita_instalacao: true
   });
 
@@ -209,10 +209,10 @@ function App() {
           prazo_desejado: '',
           complexidade: 'Média',
           valor_estimado: 0,
-          tipo_servico: 'Portão',
-          material: 'Alumínio',
+          tipo_servico: 'Janela de Alumínio',
+          material: 'Alumínio (Linha Suprema)',
           medidas_brutas: '',
-          cor_acabamento: 'Preto',
+          cor_acabamento: 'Preto Anodizado',
           necessita_instalacao: true
         });
         fetchLeads();
@@ -532,8 +532,8 @@ function App() {
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-brand">
           <div className="sidebar-brand-inner">
-            <div className="sidebar-logo-icon">S</div>
-            <span className="sidebar-brand-text">Serralheria OS</span>
+            <div className="sidebar-logo-icon">E</div>
+            <span className="sidebar-brand-text">Esquadrias OS</span>
           </div>
           <button className="sidebar-close-btn" onClick={() => setSidebarOpen(false)} aria-label="Fechar menu">
             <X size={20} />
@@ -847,7 +847,7 @@ function App() {
                     <p style={{ fontWeight: 600 }}>{lead.tipo_servico} ({lead.material})</p>
                   </div>
                   <div>
-                    <span className="form-label">Etapa SOS:</span>
+                    <span className="form-label">Etapa SOE:</span>
                     <p className={`tag ${lead.status_funil === 'Produção' ? 'tag-temp-morno' : 'tag-service'}`} style={{ marginTop: '4px' }}>
                       {lead.status_funil}
                     </p>
@@ -1141,11 +1141,12 @@ function App() {
                     value={newLeadForm.tipo_servico}
                     onChange={e => setNewLeadForm({...newLeadForm, tipo_servico: e.target.value})}
                   >
-                    <option value="Portão">Portão</option>
-                    <option value="Grade">Grade</option>
-                    <option value="Corrimão">Corrimão</option>
-                    <option value="Cobertura">Cobertura</option>
-                    <option value="Estrutura Metálica">Estrutura Metálica</option>
+                    <option value="Janela (Alumínio / PVC / Madeira)">Janela (Alumínio / PVC / Madeira)</option>
+                    <option value="Porta (Alumínio / PVC / Madeira)">Porta (Alumínio / PVC / Madeira)</option>
+                    <option value="Fachada Pele de Vidro">Fachada Pele de Vidro (Glazing)</option>
+                    <option value="Guarda-Corpo / Sacada">Guarda-Corpo / Sacada / Envidraçamento</option>
+                    <option value="Portão Integrado / Brise">Portão Integrado / Brise</option>
+                    <option value="Cobertura / Pergolado">Cobertura / Pergolado</option>
                     <option value="Outro">Outro</option>
                   </select>
                 </div>
@@ -1156,9 +1157,12 @@ function App() {
                     value={newLeadForm.material}
                     onChange={e => setNewLeadForm({...newLeadForm, material: e.target.value})}
                   >
-                    <option value="Alumínio">Alumínio</option>
-                    <option value="Ferro">Ferro / Aço Carbono</option>
-                    <option value="Inox">Aço Inox</option>
+                    <option value="Alumínio (Linha Suprema)">Alumínio (Linha Suprema)</option>
+                    <option value="Alumínio (Linha Gold)">Alumínio (Linha Gold)</option>
+                    <option value="PVC">PVC</option>
+                    <option value="Madeira (Maciça / Engenheirada)">Madeira (Maciça / Engenheirada)</option>
+                    <option value="Vidro Temperado / Laminado">Vidro Temperado / Laminado</option>
+                    <option value="Aço Inox">Aço Inox</option>
                   </select>
                 </div>
                 <div className="form-group-full form-group">

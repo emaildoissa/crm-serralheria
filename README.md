@@ -1,6 +1,6 @@
-# SOS - Sistema Operacional de Serralheria
+# SOE - Sistema Operacional de Esquadrias
 
-Este repositório contém a base completa do **SOS (Sistema Operacional de Serralheria)**, uma aplicação projetada para unificar e automatizar toda a operação de uma serralheria: captação, leitura inteligente de conversas via WhatsApp (IA), visitas de medição, orçamentação técnica, controle de fabricação na oficina e agenda de instalações.
+Este repositório contém a base completa do **SOE (Sistema Operacional de Esquadrias)**, uma aplicação projetada para unificar e automatizar toda a operação de uma empresa de esquadrias (alumínio, PVC, vidro temperado): captação, leitura inteligente de conversas via WhatsApp (IA), visitas de medição fina, orçamentação técnica, controle de fabricação na fábrica e agenda de instalações em obra.
 
 ---
 
@@ -69,11 +69,11 @@ networks:
 
 ## 🧠 Integração com n8n & Evolution API (O Coração da IA)
 
-Para que a Inteligência Artificial alimente o SOS, você deve configurar um fluxo no seu **n8n** na VPS:
+Para que a Inteligência Artificial alimente o SOE, você deve configurar um fluxo no seu **n8n** na VPS:
 
 1. **Gatilho (Evolution API)**: Escuta o recebimento de mensagens no WhatsApp.
 2. **Processamento (IA)**: Envia o histórico da conversa para o modelo (Gemini ou OpenAI) com um prompt estruturado.
-   - *Exemplo de Prompt*: "Extraia desta conversa de serralheria: Nome do Cliente, Medidas da peça, Tipo de Serviço (Portão, Grade, etc.), Material (Alumínio, Ferro) e Endereço. Responda em formato JSON."
+   - *Exemplo de Prompt*: "Extraia desta conversa de esquadrias: Nome do Cliente, Medidas da peça, Tipo de Serviço (Janela de Alumínio, Porta Pivotante, Pele de Vidro, etc.), Material (Alumínio Suprema, Gold, PVC) e Endereço. Responda em formato JSON."
 3. **Persistência (Postgres)**: O n8n executa uma consulta SQL no PostgreSQL inserindo ou atualizando o lead.
    - *Query sugerida para o nó Postgres no n8n:*
      ```sql

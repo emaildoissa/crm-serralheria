@@ -1,7 +1,7 @@
 {
   "name": "crm-serralheria-backend",
   "version": "1.0.0",
-  "description": "Backend para o Sistema Operacional de Serralheria",
+  "description": "Backend para o Sistema Operacional de Esquadrias (SOE)",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

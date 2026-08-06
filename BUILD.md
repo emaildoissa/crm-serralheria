@@ -1,4 +1,4 @@
-# Build & Deploy — CRM Serralheria
+# Build & Deploy — CRM Esquadrias (SOE)
 
 ## Pré-requisitos
 
