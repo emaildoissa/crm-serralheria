@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const db = require('../config/db');
 
 // Listar todas as Ordens de Produção
 router.get('/', async (req, res) => {
