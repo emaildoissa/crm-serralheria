@@ -153,6 +153,20 @@ async function initDatabase() {
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS ordens_producao (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      lead_id UUID REFERENCES leads(id) ON DELETE CASCADE,
+      orcamento_id UUID REFERENCES orcamentos(id) ON DELETE SET NULL,
+      numero SERIAL,
+      codigo_op VARCHAR(50),
+      status VARCHAR(50) DEFAULT 'Aguardando Medição Final',
+      prazo_fabricacao DATE,
+      responsavel VARCHAR(255),
+      observacoes TEXT,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
   `;
 
   try {
@@ -289,11 +303,13 @@ const leadsRoutes = require('./routes/leads');
 const dashboardRoutes = require('./routes/dashboard');
 const orcamentosRoutes = require('./routes/orcamentos');
 const materiaisRoutes = require('./routes/materiais');
+const producaoRoutes = require('./routes/producao');
 
 app.use('/api/leads', leadsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/orcamentos', orcamentosRoutes);
 app.use('/api/materiais', materiaisRoutes);
+app.use('/api/producao', producaoRoutes);
 
 // Endpoint de Teste/Healthcheck
 app.use('/api/health', (req, res) => {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FileText, Plus, Trash2, Zap, Layers, Percent, DollarSign, AlertCircle } from 'lucide-react';
+import { FileText, Plus, Trash2, Zap, Layers, Percent, DollarSign, AlertCircle, CheckCircle } from 'lucide-react';
 import { PDFDownloadButton } from '../pdf/PDFDownloadButton';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -174,6 +174,19 @@ export function OrcamentoSection({ lead, onOrcamentoCriado }) {
       console.error('Erro ao salvar orçamento:', err);
     }
     setSaving(false);
+  };
+
+  const handleAprovarOrcamento = async (id) => {
+    if (!window.confirm('Confirmar aprovação deste orçamento? Uma Ordem de Produção (OP) será gerada para a fábrica e o Lead será movido para "Em Produção".')) return;
+    try {
+      const res = await fetch(`${API_URL}/orcamentos/${id}/aprovar`, { method: 'POST' });
+      if (res.ok) {
+        fetchOrcamentos();
+        if (onOrcamentoCriado) onOrcamentoCriado();
+      }
+    } catch (err) {
+      console.error('Erro ao aprovar orçamento:', err);
+    }
   };
 
   const handleDeleteOrcamento = async (id) => {
@@ -434,7 +447,21 @@ export function OrcamentoSection({ lead, onOrcamentoCriado }) {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                {orc.status !== 'Aprovado' ? (
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={() => handleAprovarOrcamento(orc.id)}
+                    style={{ backgroundColor: '#10B981', borderColor: '#10B981', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <CheckCircle size={15} /> Aprovar & Gerar OP
+                  </button>
+                ) : (
+                  <span className="tag" style={{ backgroundColor: 'rgba(16, 185, 129, 0.2)', color: '#34D399', fontSize: '0.8rem', padding: '6px 12px' }}>
+                    ✓ Aprovado (OP Gerada)
+                  </span>
+                )}
                 <PDFDownloadButton orcamento={orc} lead={lead} buttonText="Baixar PDF" />
                 <button
                   type="button"

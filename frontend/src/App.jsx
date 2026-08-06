@@ -239,6 +239,7 @@ function App() {
     fetchLeads();
     fetchDashboardData();
     fetchConhecimento();
+    fetchProducao();
   }, []);
 
   const fetchConhecimento = async () => {
@@ -305,6 +306,36 @@ function App() {
       }
     } catch (err) {
       console.error('Erro ao carregar leads:', err);
+    }
+  };
+
+  const [ordensProducao, setOrdensProducao] = useState([]);
+
+  const fetchProducao = async () => {
+    try {
+      const res = await fetch(`${API_URL}/producao`);
+      if (res.ok) {
+        const data = await res.json();
+        setOrdensProducao(data);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar ordens de produção:', err);
+    }
+  };
+
+  const handleUpdateOPStatus = async (opId, status) => {
+    try {
+      const res = await fetch(`${API_URL}/producao/${opId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      if (res.ok) {
+        fetchProducao();
+        fetchLeads();
+      }
+    } catch (err) {
+      console.error('Erro ao atualizar status da OP:', err);
     }
   };
 
@@ -782,7 +813,7 @@ function App() {
           <li>
             <button
               className={`sidebar-menu-item ${currentTab === 'producao' ? 'active' : ''}`}
-              onClick={() => { setCurrentTab('producao'); setSidebarOpen(false); }}
+              onClick={() => { setCurrentTab('producao'); fetchProducao(); setSidebarOpen(false); }}
               aria-current={currentTab === 'producao' ? 'page' : undefined}
             >
               <Wrench size={20} />
@@ -1166,38 +1197,103 @@ function App() {
 
         {/* -------------------- TAB: PRODUÇÃO -------------------- */}
         {currentTab === 'producao' && (
-          <div className="production-container">
-            <h2>Acompanhamento da Fábrica</h2>
-            <div className="production-list">
-              {leads.filter(l => l.status_funil === 'Produção' || l.status_funil === 'Instalação').map(lead => (
-                <div key={lead.id} className="production-card glass-container">
-                  <div className="prod-details">
-                    <h4>{lead.nome_cliente}</h4>
-                    <p><MapPin size={12} style={{ verticalAlign: 'middle', marginRight: '4px' }} /> {lead.endereco_obra || 'Sem endereço informado'}</p>
-                  </div>
-                  <div>
-                    <span className="form-label">Serviço:</span>
-                    <p style={{ fontWeight: 600 }}>{lead.tipo_servico} ({lead.material})</p>
-                  </div>
-                  <div>
-                    <span className="form-label">Etapa SOE:</span>
-                    <p className={`tag ${lead.status_funil === 'Produção' ? 'tag-temp-morno' : 'tag-service'}`} style={{ marginTop: '4px' }}>
-                      {lead.status_funil}
-                    </p>
-                  </div>
-                  <div>
-                    <button className="btn btn-secondary" onClick={() => { setSelectedLeadId(lead.id); setEditMode(true); }}>
-                      Ver Ficha de Produção
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {leads.filter(l => l.status_funil === 'Produção' || l.status_funil === 'Instalação').length === 0 && (
-                <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '40px' }}>
-                  Nenhuma obra em estágio de Fabricação ou Instalação no momento.
+          <div className="production-container" style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+              <div>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
+                  <Wrench size={24} style={{ color: '#F59E0B' }} /> Acompanhamento de Fábrica & Ordens de Produção (OP)
+                </h2>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '4px', margin: 0 }}>
+                  Gerencie o progresso das peças, cortes e montagens das obras aprovadas.
                 </p>
-              )}
+              </div>
             </div>
+
+            {ordensProducao.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {ordensProducao.map(op => (
+                  <div key={op.id} className="glass-container" style={{ padding: '20px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '14px', marginBottom: '14px' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <strong style={{ fontSize: '1.1rem', color: '#F59E0B' }}>{op.codigo_op}</strong>
+                          <span className="tag" style={{ backgroundColor: 'rgba(59, 130, 246, 0.2)', color: '#60A5FA', fontSize: '0.8rem' }}>
+                            Orçamento #{op.orcamento_numero || '—'}
+                          </span>
+                          <span className="tag tag-service" style={{ fontSize: '0.8rem' }}>
+                            {op.status_funil || 'Em Produção'}
+                          </span>
+                        </div>
+                        <h3 style={{ margin: '6px 0 2px 0', fontSize: '1.1rem', color: '#FFF' }}>{op.nome_cliente}</h3>
+                        <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                          <MapPin size={13} style={{ verticalAlign: 'middle', marginRight: '4px' }} /> {op.endereco_obra || 'Endereço não informado'} • WhatsApp: {op.whatsapp || '—'}
+                        </p>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Status da Fábrica:</div>
+                        <select
+                          className="form-control"
+                          style={{
+                            width: '220px',
+                            fontWeight: 'bold',
+                            backgroundColor: op.status === 'Concluído' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.15)',
+                            borderColor: op.status === 'Concluído' ? '#10B981' : '#F59E0B',
+                            color: op.status === 'Concluído' ? '#34D399' : '#FBBF24'
+                          }}
+                          value={op.status}
+                          onChange={e => handleUpdateOPStatus(op.id, e.target.value)}
+                        >
+                          <option value="Aguardando Medição Final">📏 1. Aguardando Medição Final</option>
+                          <option value="Corte / Usinagem">✂️ 2. Corte / Usinagem dos Perfis</option>
+                          <option value="Montagem & Vidros">🛠️ 3. Montagem & Vidros</option>
+                          <option value="Pronto para Instalação">🚚 4. Pronto para Expedição/Instalação</option>
+                          <option value="Concluído">✅ 5. Concluído e Entregue</option>
+                        </select>
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          style={{ fontSize: '0.75rem', padding: '4px 10px' }}
+                          onClick={() => { setSelectedLeadId(op.lead_id); setEditMode(true); }}
+                        >
+                          Ver Ficha do Lead
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Lista de Peças e Medidas da OP */}
+                    <div>
+                      <h4 style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Itens para Fabricação ({op.itens?.length || 0} peça(s)):
+                      </h4>
+                      {op.itens && op.itens.length > 0 ? (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px' }}>
+                          {op.itens.map((item, idx) => (
+                            <div key={idx} style={{ backgroundColor: 'rgba(255,255,255,0.03)', padding: '10px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
+                              <div style={{ fontWeight: 'bold', color: '#FFF' }}>{item.descricao}</div>
+                              <div style={{ color: '#F59E0B', marginTop: '4px' }}>
+                                Qtd: {item.quantidade} {item.unidade} {item.largura && item.altura ? `(${item.largura}m × ${item.altura}m)` : ''}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>Nenhum item detalhado nesta Ordem de Produção.</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="glass-container" style={{ padding: '40px', textAlign: 'center' }}>
+                <Wrench size={32} style={{ color: 'var(--text-muted)', marginBottom: '12px' }} />
+                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+                  Nenhuma Ordem de Produção (OP) aberta no momento.
+                </p>
+                <p style={{ margin: '6px 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                  Aprove um orçamento na ficha de um cliente para gerar a Ordem de Produção automaticamente!
+                </p>
+              </div>
+            )}
           </div>
         )}
 

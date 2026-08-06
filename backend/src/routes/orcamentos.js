@@ -184,6 +184,66 @@ router.post('/', async (req, res) => {
   }
 });
 
+// POST /api/orcamentos/:id/aprovar — Aprovar orçamento, gerar OP e avançar Lead no Funil
+router.post('/:id/aprovar', async (req, res) => {
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { id } = req.params;
+
+    // Buscar orçamento
+    const orcRes = await client.query('SELECT * FROM orcamentos WHERE id = $1', [id]);
+    if (orcRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Orçamento não encontrado.' });
+    }
+    const orcamento = orcRes.rows[0];
+
+    // Atualizar status do orçamento
+    await client.query("UPDATE orcamentos SET status = 'Aprovado', updated_at = CURRENT_TIMESTAMP WHERE id = $1", [id]);
+
+    // Criar Ordem de Produção (OP)
+    const numRes = await client.query("SELECT COUNT(*) + 1001 as num FROM ordens_producao");
+    const opNumber = numRes.rows[0].num;
+    const codigo_op = `OP-${opNumber}`;
+
+    const opQuery = `
+      INSERT INTO ordens_producao (lead_id, orcamento_id, codigo_op, status, responsavel, observacoes)
+      VALUES ($1, $2, $3, 'Aguardando Medição Final', 'Equipe de Fábrica', 'Gerado via aprovação de proposta comercial')
+      RETURNING *;
+    `;
+    const opRes = await client.query(opQuery, [orcamento.lead_id, id, codigo_op]);
+    const novaOP = opRes.rows[0];
+
+    // Avançar Lead no Funil do CRM para "Fabricação e montagem"
+    await client.query(
+      "UPDATE leads SET status_funil = 'Fabricação e montagem', updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+      [orcamento.lead_id]
+    );
+
+    // Registrar evento na Timeline do Lead
+    await client.query(
+      `INSERT INTO timeline_eventos (lead_id, tipo, descricao, responsavel)
+       VALUES ($1, 'ORCAMENTO_APROVADO', $2, 'Vendedor')`,
+      [orcamento.lead_id, `Orçamento #${orcamento.numero} APROVADO! Ordem de Produção ${codigo_op} criada.`]
+    );
+
+    await client.query('COMMIT');
+
+    res.json({
+      message: 'Orçamento aprovado e Ordem de Produção criada com sucesso!',
+      orcamento_id: id,
+      ordem_producao: novaOP
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Erro ao aprovar orçamento:', error);
+    res.status(500).json({ error: 'Erro interno ao aprovar orçamento.' });
+  } finally {
+    client.release();
+  }
+});
+
 // DELETE /api/orcamentos/:id — Excluir orçamento
 router.delete('/:id', async (req, res) => {
   try {
