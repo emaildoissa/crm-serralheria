@@ -914,6 +914,7 @@ function App() {
         {currentTab === 'dashboard' && (
           dashboardData ? (
             <div className="dashboard-grid">
+              {/* KPIs Principais */}
               <div className="dashboard-metrics-row">
                 <MetricGauge
                   label="Pipeline Estimado"
@@ -954,141 +955,140 @@ function App() {
                 />
               </div>
 
-              {/* Leads Parados (Alerta IA) */}
-              <div className="db-section-large glass-container">
-                <div className="db-section-header">
-                  <h3><AlertTriangle size={18} color="var(--red)" /> Alertas de Ação da IA (Leads Parados/Esfriando)</h3>
-                  <span className="badge-pill" style={{ background: 'rgba(217, 83, 63, 0.15)', color: 'var(--red-bright)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.68rem', fontFamily: 'var(--font-mono)' }}>
-                    {dashboardData.insights_ia.leads_parados.length} ATENÇÃO
-                  </span>
-                </div>
-                <div className="db-section-body">
-                  <div className="db-table-wrapper">
-                    <table className="db-table">
-                      <thead>
-                        <tr>
-                          <th>Cliente</th>
-                          <th>Fase Atual</th>
-                          <th>Última Atualização</th>
-                          <th>Temperatura</th>
-                          <th>Próxima Ação Sugerida pela IA</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {dashboardData.insights_ia.leads_parados.length > 0 ? (
-                          dashboardData.insights_ia.leads_parados.map(lead => (
-                            <tr key={lead.id} className="row-click" onClick={() => setSelectedLeadId(lead.id)}>
-                              <td><strong>{lead.nome_cliente}</strong></td>
-                              <td><span className="tag tag-service" style={{ background: 'rgba(255,255,255,0.06)' }}>{lead.status_funil}</span></td>
-                              <td>{new Date(lead.updated_at).toLocaleDateString('pt-BR')}</td>
-                              <td>
-                                <span className={`tag tag-temp-${lead.temperatura_lead?.toLowerCase()}`}>
-                                  {lead.temperatura_lead}
-                                </span>
-                              </td>
-                              <td className="cell-ia">
-                                <Sparkles size={14} color="var(--trace)" style={{ display: 'inline', marginRight: '6px' }} />
-                                {lead.proxima_acao || 'Solicitar fotos complementares ou agendar medição.'}
-                              </td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr>
-                            <td colSpan="5" className="cell-empty">Nenhum lead com alerta de inatividade! Operação em dia.</td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-
-              {/* Compromissos da Semana */}
-              <div className="db-section-large glass-container">
-                <div className="db-section-header">
-                  <h3><Calendar size={18} color="var(--primary)" /> Próximas Medições & Instalações</h3>
-                  <span className="badge-pill" style={{ background: 'rgba(217, 119, 6, 0.15)', color: 'var(--primary-hover)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.68rem', fontFamily: 'var(--font-mono)' }}>
-                    AGENDA TÉCNICA
-                  </span>
-                </div>
-                <div className="db-section-body">
-                  <div className="db-table-wrapper">
-                    <table className="db-table">
-                      <thead>
-                        <tr>
-                          <th>Tipo</th>
-                          <th>Cliente</th>
-                          <th>Data & Hora</th>
-                          <th>Responsável</th>
-                          <th>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {dashboardData.compromissos_proximos.length > 0 ? (
-                          dashboardData.compromissos_proximos.map(comp => (
-                            <tr key={comp.id} className="row-click" onClick={() => setSelectedLeadId(comp.lead_id)}>
-                              <td>
-                                <span className={`tag ${comp.tipo === 'Medição' ? 'tag-temp-morno' : 'tag-service'}`}>
-                                  {comp.tipo}
-                                </span>
-                              </td>
-                              <td><strong>{comp.nome_cliente}</strong></td>
-                              <td>{new Date(comp.data_hora).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</td>
-                              <td>{comp.responsavel || 'Não designado'}</td>
-                              <td><span className="tag" style={{ background: 'rgba(255,255,255,0.06)' }}>{comp.status}</span></td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr>
-                            <td colSpan="5" className="cell-empty">Sem visitas agendadas para os próximos dias.</td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-
-              {/* Distribuição do Funil */}
-              <div className="db-section-large glass-container">
-                <div className="db-section-header">
-                  <h3><BarChart3 size={18} color="var(--trace)" /> Distribuição do Funil — Obras por Estágio</h3>
-                </div>
-                <div className="db-section-body">
-                  <div className="chart-plates">
-                    <div className="chart-block">
-                      <h4>Unidades por estágio</h4>
-                      <StageBars counts={stageCounts} />
+              {/* Layout Dividido em 2 Colunas Executivas */}
+              <div className="dashboard-columns-layout">
+                {/* Coluna Principal: Alertas da IA e Agenda Técnica */}
+                <div className="dashboard-col-main">
+                  {/* Alertas de Ação da IA */}
+                  <div className="db-section-large glass-container">
+                    <div className="db-section-header">
+                      <h3><AlertTriangle size={18} color="var(--red-bright)" /> Alertas de Ação da IA (Leads Parados/Esfriando)</h3>
+                      <span className="badge-pill badge-red">
+                        {dashboardData.insights_ia.leads_parados.length} EM ATENÇÃO
+                      </span>
                     </div>
-                    <div className="chart-block">
-                      <h4>Zonas do ciclo de obra</h4>
-                      <ZoneStrip counts={stageCounts} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Motivos de Perda */}
-              <div className="db-section-large glass-container">
-                <div className="db-section-header">
-                  <h3><TrendingUp size={18} color="var(--red)" /> Motivos de Perda (Top 5)</h3>
-                </div>
-                <div className="db-section-body">
-                  {dashboardData.insights_ia.motivos_perda.length > 0 ? (
-                    <div className="stage-bars">
-                      {dashboardData.insights_ia.motivos_perda.map((m, i) => (
-                        <div key={m.motivo_perda} className="stage-bar-row">
-                          <span title={m.motivo_perda}>{m.motivo_perda}</span>
-                          <div className="stage-bar-track">
-                            <div className="stage-bar-fill" style={{ width: `${Math.max(8, (m.qtd / dashboardData.insights_ia.motivos_perda[0].qtd) * 100)}%`, backgroundColor: 'var(--red)', animationDelay: `${i * 0.06}s` }} />
-                          </div>
-                          <span className="stage-bar-val">{m.qtd}</span>
+                    <div className="db-section-body">
+                      {dashboardData.insights_ia.leads_parados.length > 0 ? (
+                        <div className="alert-cards-feed">
+                          {dashboardData.insights_ia.leads_parados.map(lead => (
+                            <div key={lead.id} className="alert-card-item" onClick={() => setSelectedLeadId(lead.id)}>
+                              <div className="alert-card-top">
+                                <div className="alert-card-title">
+                                  <strong>{lead.nome_cliente}</strong>
+                                  <span className={`tag tag-temp-${lead.temperatura_lead?.toLowerCase()}`}>
+                                    {lead.temperatura_lead || 'Morno'}
+                                  </span>
+                                </div>
+                                <div className="alert-card-meta">
+                                  <span className="tag tag-service">{lead.status_funil}</span>
+                                  <span className="alert-date"><Clock size={12} /> Atualizado em {new Date(lead.updated_at).toLocaleDateString('pt-BR')}</span>
+                                </div>
+                              </div>
+                              <div className="alert-card-ia-box">
+                                <Sparkles size={15} color="var(--trace)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                                <div>
+                                  <span className="ia-box-label">Ação Sugerida pela IA:</span>
+                                  <p className="ia-box-text">{lead.proxima_acao || 'Agendar medição presencial ou enviar catálogo de amostras.'}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      ) : (
+                        <div className="cell-empty">
+                          <CheckCircle size={24} color="var(--green-bright)" style={{ marginBottom: '8px' }} />
+                          <p>Nenhum lead com alerta de inatividade! A operação está em dia.</p>
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <p className="cell-empty">Nenhum motivo de perda registrado ainda.</p>
-                  )}
+                  </div>
+
+                  {/* Próximas Medições & Instalações */}
+                  <div className="db-section-large glass-container">
+                    <div className="db-section-header">
+                      <h3><Calendar size={18} color="var(--primary)" /> Próximas Medições & Instalações</h3>
+                      <span className="badge-pill badge-amber">
+                        AGENDA TÉCNICA
+                      </span>
+                    </div>
+                    <div className="db-section-body">
+                      {dashboardData.compromissos_proximos.length > 0 ? (
+                        <div className="agenda-timeline-list">
+                          {dashboardData.compromissos_proximos.map(comp => (
+                            <div key={comp.id} className="agenda-timeline-item" onClick={() => setSelectedLeadId(comp.lead_id)}>
+                              <div className="agenda-time-badge">
+                                <span className="time-val">{new Date(comp.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                <span className="date-val">{new Date(comp.data_hora).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>
+                              </div>
+                              <div className="agenda-info">
+                                <div className="agenda-title-row">
+                                  <strong>{comp.nome_cliente}</strong>
+                                  <span className={`tag ${comp.tipo === 'Medição' ? 'tag-temp-morno' : 'tag-service'}`}>
+                                    {comp.tipo}
+                                  </span>
+                                </div>
+                                <div className="agenda-sub-row">
+                                  <span>Técnico: <strong>{comp.responsavel || 'Não designado'}</strong></span>
+                                  <span className="status-badge">{comp.status}</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="cell-empty">
+                          <Calendar size={24} color="var(--text-dim)" style={{ marginBottom: '8px' }} />
+                          <p>Sem visitas agendadas para os próximos dias.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Coluna Lateral: Resumo do Funil, Motivos de Perda & Saúde Operacional */}
+                <div className="dashboard-col-side">
+                  {/* Distribuição do Funil */}
+                  <div className="db-section-large glass-container">
+                    <div className="db-section-header">
+                      <h3><BarChart3 size={18} color="var(--trace)" /> Funil por Estágio</h3>
+                    </div>
+                    <div className="db-section-body">
+                      <div className="chart-plates">
+                        <div className="chart-block">
+                          <h4>Zonas do Ciclo de Obra</h4>
+                          <ZoneStrip counts={stageCounts} />
+                        </div>
+                        <div className="chart-block" style={{ marginTop: '12px' }}>
+                          <h4>Obras por Estágio</h4>
+                          <StageBars counts={stageCounts} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Motivos de Perda */}
+                  <div className="db-section-large glass-container">
+                    <div className="db-section-header">
+                      <h3><TrendingUp size={18} color="var(--red-bright)" /> Motivos de Perda (Top 5)</h3>
+                    </div>
+                    <div className="db-section-body">
+                      {dashboardData.insights_ia.motivos_perda.length > 0 ? (
+                        <div className="stage-bars">
+                          {dashboardData.insights_ia.motivos_perda.map((m, i) => (
+                            <div key={m.motivo_perda} className="stage-bar-row">
+                              <span title={m.motivo_perda}>{m.motivo_perda}</span>
+                              <div className="stage-bar-track">
+                                <div className="stage-bar-fill" style={{ width: `${Math.max(8, (m.qtd / dashboardData.insights_ia.motivos_perda[0].qtd) * 100)}%`, backgroundColor: 'var(--red)', animationDelay: `${i * 0.06}s` }} />
+                              </div>
+                              <span className="stage-bar-val">{m.qtd}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="cell-empty">Nenhum motivo de perda registrado ainda.</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

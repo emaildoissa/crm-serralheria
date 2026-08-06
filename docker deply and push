@@ -1,0 +1,2 @@
+docker build -t emaildoissa/crm-serralheria:latest .
+docker push emaildoissa/crm-serralheria:latest
