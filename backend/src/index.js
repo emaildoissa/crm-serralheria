@@ -304,12 +304,15 @@ const dashboardRoutes = require('./routes/dashboard');
 const orcamentosRoutes = require('./routes/orcamentos');
 const materiaisRoutes = require('./routes/materiais');
 const producaoRoutes = require('./routes/producao');
+const conhecimentoRoutes = require('./routes/conhecimento');
 
 app.use('/api/leads', leadsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/orcamentos', orcamentosRoutes);
 app.use('/api/materiais', materiaisRoutes);
 app.use('/api/producao', producaoRoutes);
+app.use('/api/conhecimento', conhecimentoRoutes);
+
 
 // Endpoint de Teste/Healthcheck
 app.use('/api/health', (req, res) => {
