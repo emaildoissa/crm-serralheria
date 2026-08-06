@@ -39,6 +39,7 @@ import {
   Handshake
 } from 'lucide-react';
 import { OrcamentoSection } from './components/orcamentos/OrcamentoSection';
+import { MateriaisPage } from './components/materiais/MateriaisPage';
 
 const API_URL = import.meta.env.DEV ? 'http://localhost:5000/api' : (import.meta.env.VITE_API_URL || '/api');
 
@@ -811,6 +812,17 @@ function App() {
               <span className="menu-index">06</span>
             </button>
           </li>
+          <li>
+            <button
+              className={`sidebar-menu-item ${currentTab === 'materiais' ? 'active' : ''}`}
+              onClick={() => { setCurrentTab('materiais'); setSidebarOpen(false); }}
+              aria-current={currentTab === 'materiais' ? 'page' : undefined}
+            >
+              <Layers size={20} />
+              Catálogo & Precificação
+              <span className="menu-index">07</span>
+            </button>
+          </li>
         </ul>
         <div className="sidebar-action">
           <button className="sidebar-create-btn" onClick={() => { setIsCreateModalOpen(true); setSidebarOpen(false); }}>
@@ -840,6 +852,7 @@ function App() {
                 {currentTab === 'producao' && '04'}
                 {currentTab === 'ia-contextual' && '05'}
                 {currentTab === 'conhecimento' && '06'}
+                {currentTab === 'materiais' && '07'}
               </span>
               <h1>
                 <span className="hide-mobile">
@@ -849,6 +862,7 @@ function App() {
                   {currentTab === 'producao' && 'Status de Produção e Fábrica'}
                   {currentTab === 'ia-contextual' && 'IA Contextual — Análise de Conversas'}
                   {currentTab === 'conhecimento' && 'Base de Conhecimento & Regras de Atendimento da IA'}
+                  {currentTab === 'materiais' && 'Catálogo de Materiais, Perfis & Tabelas de Fornecedor'}
                 </span>
                 <span className="show-mobile">
                   {currentTab === 'dashboard' && 'Dashboard'}
@@ -857,6 +871,7 @@ function App() {
                   {currentTab === 'producao' && 'Produção'}
                   {currentTab === 'ia-contextual' && 'IA'}
                   {currentTab === 'conhecimento' && 'Regras IA'}
+                  {currentTab === 'materiais' && 'Catálogo'}
                 </span>
               </h1>
             </div>
@@ -1515,6 +1530,9 @@ function App() {
             </div>
           </div>
         )}
+
+        {/* -------------------- TAB: CATÁLOGO & PRECIFICAÇÃO -------------------- */}
+        {currentTab === 'materiais' && <MateriaisPage />}
       </main>
 
       {/* -------------------- MODAL: NOVO LEAD / PEDIDO -------------------- */}

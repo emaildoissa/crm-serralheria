@@ -139,6 +139,20 @@ async function initDatabase() {
       ordem INT DEFAULT 0,
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS materiais (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      nome VARCHAR(255) NOT NULL,
+      categoria VARCHAR(100) DEFAULT 'Perfis de Alumínio',
+      unidade VARCHAR(20) DEFAULT 'm²',
+      fornecedor VARCHAR(255),
+      preco_custo DECIMAL(10,2) DEFAULT 0,
+      preco_venda DECIMAL(10,2) DEFAULT 0,
+      margem_padrao_pct DECIMAL(5,2) DEFAULT 15,
+      observacoes TEXT,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
   `;
 
   try {
@@ -146,6 +160,8 @@ async function initDatabase() {
     await db.query('CREATE EXTENSION IF NOT EXISTS "pgcrypto";');
     await db.query(schemaSQL);
     // Migrações para tabelas existentes (adiciona colunas novas)
+    await db.query('ALTER TABLE orcamentos ADD COLUMN IF NOT EXISTS modo_precificacao VARCHAR(50) DEFAULT \'DIRETO\';');
+    await db.query('ALTER TABLE orcamentos ADD COLUMN IF NOT EXISTS percentual_majoracao DECIMAL(5,2) DEFAULT 0;');
     await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS responsavel VARCHAR(255);');
     await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS resposta_sugerida TEXT;');
     await db.query('ALTER TABLE leads ADD COLUMN IF NOT EXISTS sentimento VARCHAR(50);');
@@ -272,10 +288,12 @@ initDatabase();
 const leadsRoutes = require('./routes/leads');
 const dashboardRoutes = require('./routes/dashboard');
 const orcamentosRoutes = require('./routes/orcamentos');
+const materiaisRoutes = require('./routes/materiais');
 
 app.use('/api/leads', leadsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/orcamentos', orcamentosRoutes);
+app.use('/api/materiais', materiaisRoutes);
 
 // Endpoint de Teste/Healthcheck
 app.use('/api/health', (req, res) => {
